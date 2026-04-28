@@ -1,0 +1,23 @@
+# Arquivos do sistema
+*.log
+*.tmp
+temp/
+.DS_Store
+Thumbs.db
+
+# Arquivos de backup locais
+backup_*.json
+*.bak
+
+# Arquivos de configuração do editor
+.vscode/
+*.sublime-*
+
+# Arquivos do Node.js (caso seja usado)
+node_modules/
+npm-debug.log*
+
+# Arquivos de desenvolvimento
+test/
+dev/
+*.dev.html

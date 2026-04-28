@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planos de Aula · Academia Nacional de Polícia</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0f2044;--navy2:#162d5e;--navy3:#1e3a72;
+  --gold:#c8a84b;--gold2:#e8c96b;
+  --white:#ffffff;--bg:#f4f5f7;--surface:#ffffff;
+  --border:#dde1ea;--border2:#c8cdd9;
+  --text:#1a1f2e;--text2:#4a5568;--text3:#8a93a8;
+  --green:#22a95b;--red:#e53e3e;--blue:#2b6cb0;
+  --radius:8px;--radius2:12px;
+  --sidebar:272px;
+}
+html,body{height:100%;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;font-size:14px;color:var(--text);background:var(--bg)}
+/* ── LAYOUT ── */
+.app{display:flex;height:100vh;overflow:hidden}
+/* ── SIDEBAR ── */
+.sidebar{width:var(--sidebar);min-width:var(--sidebar);background:var(--navy);display:flex;flex-direction:column;overflow:hidden;z-index:10}
+.sidebar-brand{padding:20px 18px 16px;border-bottom:1px solid rgba(255,255,255,.1)}
+.brand-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.brand-icon{width:28px;height:28px;background:var(--gold);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--navy)}
+.brand-title{font-size:13px;font-weight:600;color:var(--white);line-height:1.2}
+.brand-sub{font-size:11px;color:rgba(255,255,255,.45);margin-top:2px}
+.sidebar-progress{padding:12px 18px;border-bottom:1px solid rgba(255,255,255,.08)}
+.progress-label{font-size:11px;color:rgba(255,255,255,.45);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.progress-bar{height:4px;background:rgba(255,255,255,.12);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .4s ease}
+.progress-count{font-size:11px;color:rgba(255,255,255,.45);margin-top:5px;text-align:right}
+.sidebar-scroll{flex:1;overflow-y:auto;padding:8px 0}
+.sidebar-scroll::-webkit-scrollbar{width:4px}
+.sidebar-scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.12);border-radius:2px}
+/* ── COURSE GROUP ── */
+.course-group{margin-bottom:2px}
+.course-header{display:flex;align-items:center;gap:10px;padding:9px 18px;cursor:pointer;transition:background .15s;user-select:none}
+.course-header:hover{background:rgba(255,255,255,.06)}
+.course-toggle{width:16px;height:16px;display:flex;align-items:center;justify-content:center;opacity:.5;transition:transform .2s,opacity .2s;flex-shrink:0}
+.course-toggle svg{width:10px;height:10px;fill:none;stroke:white;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.course-group.open .course-toggle{transform:rotate(90deg);opacity:.8}
+.course-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.course-info{flex:1;min-width:0}
+.course-name{font-size:12px;font-weight:500;color:rgba(255,255,255,.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.course-meta{font-size:10px;color:rgba(255,255,255,.35);margin-top:1px}
+.course-badge{font-size:10px;font-weight:600;color:rgba(255,255,255,.4);font-family:'IBM Plex Mono',monospace;flex-shrink:0}
+/* ── LESSON ITEMS ── */
+.lessons-list{display:none;padding-left:28px}
+.course-group.open .lessons-list{display:block}
+.lesson-item{display:flex;align-items:center;gap:8px;padding:6px 18px 6px 10px;cursor:pointer;transition:background .12s;border-radius:5px;margin:1px 6px 1px 0}
+.lesson-item:hover{background:rgba(255,255,255,.07)}
+.lesson-item.active{background:rgba(200,168,75,.15);border-left:2px solid var(--gold)}
+.lesson-status{width:8px;height:8px;border-radius:50%;border:1.5px solid rgba(255,255,255,.25);flex-shrink:0;transition:all .2s}
+.lesson-status.done{background:var(--green);border-color:var(--green)}
+.lesson-status.partial{background:var(--gold);border-color:var(--gold)}
+.lesson-label{font-size:11.5px;color:rgba(255,255,255,.6);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lesson-item.active .lesson-label{color:var(--gold2);font-weight:500}
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+/* ── TOPBAR ── */
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+.topbar-title{flex:1;min-width:0}
+.topbar-title h1{font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.topbar-title p{font-size:12px;color:var(--text3);margin-top:1px}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;border:1.5px solid transparent;transition:all .15s;white-space:nowrap}
+.btn-primary{background:var(--navy);color:var(--white);border-color:var(--navy)}
+.btn-primary:hover{background:var(--navy2)}
+.btn-ghost{background:transparent;color:var(--text2);border-color:var(--border2)}
+.btn-ghost:hover{background:var(--bg);border-color:var(--border2)}
+.btn-gold{background:var(--gold);color:var(--navy);border-color:var(--gold);font-weight:600}
+.btn-gold:hover{background:var(--gold2)}
+.btn-sm{padding:5px 10px;font-size:11.5px}
+.btn svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+/* ── EMPTY STATE ── */
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text3);gap:12px}
+.empty-icon{width:52px;height:52px;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center}
+.empty-icon svg{width:22px;height:22px;stroke:var(--text3);fill:none;stroke-width:1.5}
+.empty-state p{font-size:13px}
+/* ── EDITOR ── */
+.editor-wrap{flex:1;overflow-y:auto;padding:24px 28px}
+.editor-wrap::-webkit-scrollbar{width:6px}
+.editor-wrap::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.editor-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+.field-group{display:flex;flex-direction:column;gap:5px}
+.field-group.full{grid-column:1/-1}
+label{font-size:11.5px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
+input[type=text],input[type=number],textarea,select{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--text);background:var(--surface);transition:border-color .15s,box-shadow .15s;resize:vertical;outline:none}
+input:focus,textarea:focus,select:focus{border-color:var(--navy3);box-shadow:0 0 0 3px rgba(30,58,114,.1)}
+input[readonly]{background:#f8f9fb;color:var(--text3);cursor:default}
+textarea{line-height:1.6;min-height:90px}
+textarea.tall{min-height:170px}
+.section-divider{grid-column:1/-1;display:flex;align-items:center;gap:12px;margin:4px 0}
+.section-divider span{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
+.section-divider::before,.section-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+/* ── FOOTER BAR ── */
+.editor-footer{background:var(--surface);border-top:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.save-status{font-size:12px;color:var(--text3);flex:1}
+.save-status.saved{color:var(--green)}
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:white;padding:10px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+/* ── DOC PREVIEW BADGE ── */
+.aula-badge{display:inline-flex;align-items:center;gap:6px;background:var(--navy);color:var(--gold);padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;font-family:'IBM Plex Mono',monospace;letter-spacing:.02em}
+/* ── TOOLTIP ── */
+.help{display:inline-block;width:14px;height:14px;border-radius:50%;background:var(--border2);color:var(--text3);font-size:9px;font-weight:700;text-align:center;line-height:14px;cursor:help;margin-left:4px;vertical-align:middle}
+/* ── DISCIPLINE PLAN ITEM ── */
+.disc-item{margin-bottom:3px;padding-bottom:3px;border-bottom:1px solid rgba(255,255,255,.08)}
+.disc-status{width:8px;height:8px;border-radius:2px;border:1.5px solid rgba(255,255,255,.3);flex-shrink:0;transition:all .2s}
+.disc-status.done{background:var(--green);border-color:var(--green)}
+.disc-status.partial{background:var(--gold);border-color:var(--gold)}
+.disc-item .lesson-label{font-size:11px;color:rgba(255,255,255,.5);font-style:italic}
+.disc-item.active .lesson-label{color:var(--gold2);font-weight:500;font-style:normal}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ══════════ SIDEBAR ══════════ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-logo">
+      <div class="brand-icon">DPF</div>
+      <div>
+        <div class="brand-title">Planos de Aula</div>
+        <div class="brand-sub">CFP 2026 · ePol</div>
+      </div>
+    </div>
+  </div>
+  <div class="sidebar-progress">
+    <div class="progress-label">Progresso geral</div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-count" id="progressCount">0 / 46 aulas preenchidas</div>
+  </div>
+  <div class="sidebar-scroll" id="sidebarList"></div>
+</aside>
+
+<!-- ══════════ MAIN ══════════ -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title">
+      <h1 id="mainTitle">Selecione uma aula</h1>
+      <p id="mainSub">Clique em uma aula na barra lateral para editar</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" id="btnGenAll" onclick="generateAll()" style="display:none">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+      Gerar todos da disciplina
+    </button>
+    <button class="btn btn-ghost btn-sm" onclick="backupData()" title="Fazer backup dos dados">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+      Backup
+    </button>
+    <button class="btn btn-gold" id="btnGenDisc" onclick="generateDisciplinaDoc()" style="display:none">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Gerar .docx
+    </button>
+    <button class="btn btn-gold" id="btnGen" onclick="generateDoc()" style="display:none">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Gerar .docx
+    </button>
+  </div>
+
+  <div id="emptyState" class="empty-state">
+    <div class="empty-icon">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+    </div>
+    <p>Selecione uma aula na barra lateral</p>
+  </div>
+
+  <div id="editorArea" style="display:none;flex:1;overflow:hidden;flex-direction:column">
+    <div class="editor-wrap">
+      <div class="editor-grid" id="editorGrid">
+
+        <div class="field-group">
+          <label>Curso</label>
+          <input type="text" id="f_curso" readonly>
+        </div>
+        <div class="field-group">
+          <label>Ano</label>
+          <input type="text" id="f_ano">
+        </div>
+        <div class="field-group">
+          <label>Disciplina</label>
+          <input type="text" id="f_disciplina" readonly>
+        </div>
+        <div class="field-group">
+          <label>Avaliação</label>
+          <input type="text" id="f_avaliacao" placeholder="Ex: Prova Prática">
+        </div>
+        <div class="field-group">
+          <label>Duração</label>
+          <input type="text" id="f_duracao" placeholder="Ex: 2h/a">
+        </div>
+        <div class="field-group" style="align-items:flex-start;justify-content:flex-end;padding-top:20px">
+          <span class="aula-badge" id="aulaBadge">Aula 00 / 00</span>
+        </div>
+
+        <div class="section-divider"><span>Conteúdo pedagógico</span></div>
+
+        <div class="field-group full">
+          <label>Objetivos Específicos <span class="help" title="O que o aluno deverá ser capaz de fazer ao final da aula">?</span></label>
+          <textarea id="f_objetivos" class="tall" placeholder="Ao final da aula, os alunos deverão ser capazes de:&#10;&#10;- Descrever...&#10;- Utilizar...&#10;- Realizar..."></textarea>
+        </div>
+        <div class="field-group full">
+          <label>Conteúdos</label>
+          <textarea id="f_conteudos" placeholder="Liste os tópicos abordados na aula..."></textarea>
+        </div>
+
+        <div class="section-divider"><span>Desenvolvimento da aula</span></div>
+
+        <div class="field-group full">
+          <label>Estratégias de Ensino <span class="help" title="Roteiro detalhado com marcações de tempo">?</span></label>
+          <textarea id="f_estrategias" class="tall" style="min-height:220px" placeholder="0–15 min · Introdução&#10;Recepção dos alunos, apresentação dos professores e objetivos da aula.&#10;&#10;15–45 min · [Tópico 1]&#10;...&#10;&#10;45–80 min · [Tópico 2]&#10;...&#10;&#10;80–100 min · Encerramento&#10;Debriefing e revisão dos objetivos."></textarea>
+        </div>
+
+        <div class="section-divider"><span>Infraestrutura</span></div>
+
+        <div class="field-group full">
+          <label>Recursos Materiais e Didáticos</label>
+          <textarea id="f_recursos" placeholder="- Kit multimídia&#10;- Slides&#10;- Laboratório de informática com acesso à internet..."></textarea>
+        </div>
+
+      </div>
+    </div>
+    <div class="editor-footer">
+      <span class="save-status" id="saveStatus">Edite os campos acima</span>
+      <button class="btn btn-primary btn-sm" onclick="saveLesson()">
+        <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Salvar
+      </button>
+    </div>
+  </div>
+  <!-- ── DISCIPLINE PLAN EDITOR ── -->
+  <div id="disciplinaArea" style="display:none;flex:1;overflow:hidden;flex-direction:column">
+    <div class="editor-wrap">
+      <div class="editor-grid">
+
+        <div class="field-group">
+          <label>Curso</label>
+          <input type="text" id="fd_curso" readonly>
+        </div>
+        <div class="field-group">
+          <label>Ano</label>
+          <input type="text" id="fd_ano">
+        </div>
+        <div class="field-group full">
+          <label>Carga Horária Total</label>
+          <input type="text" id="fd_cargaHoraria" placeholder="Ex: 16h/a (8 aulas de 2h/a)">
+        </div>
+
+        <div class="section-divider"><span>Planejamento</span></div>
+
+        <div class="field-group full">
+          <label>Ementa <span class="help" title="Descrição resumida do conteúdo da disciplina">?</span></label>
+          <textarea id="fd_ementa" class="tall" placeholder="Descrição geral da disciplina e seus principais tópicos..."></textarea>
+        </div>
+        <div class="field-group full">
+          <label>Objetivo Geral</label>
+          <textarea id="fd_objetivoGeral" placeholder="Ao final da disciplina, os alunos deverão ser capazes de..."></textarea>
+        </div>
+        <div class="field-group full">
+          <label>Conteúdo Programático</label>
+          <textarea id="fd_conteudoProgramatico" class="tall" placeholder="Aula 01 — Tema&#10;Aula 02 — Tema&#10;..."></textarea>
+        </div>
+
+        <div class="section-divider"><span>Metodologia e Avaliação</span></div>
+
+        <div class="field-group full">
+          <label>Metodologia de Ensino</label>
+          <textarea id="fd_metodologia" placeholder="Descreva as estratégias e métodos de ensino utilizados na disciplina..."></textarea>
+        </div>
+        <div class="field-group full">
+          <label>Critérios de Avaliação</label>
+          <textarea id="fd_avaliacao" placeholder="Descreva os critérios e instrumentos de avaliação..."></textarea>
+        </div>
+
+        <div class="section-divider"><span>Infraestrutura e Referências</span></div>
+
+        <div class="field-group full">
+          <label>Recursos Materiais e Didáticos</label>
+          <textarea id="fd_recursos" placeholder="- Kit multimídia&#10;- Slides&#10;- Laboratório de informática..."></textarea>
+        </div>
+        <div class="field-group full">
+          <label>Bibliografia</label>
+          <textarea id="fd_bibliografia" placeholder="AUTOR, Nome. Título. Edição. Local: Editora, Ano.&#10;..."></textarea>
+        </div>
+
+      </div>
+    </div>
+    <div class="editor-footer">
+      <span class="save-status" id="saveStatusDisc">Edite os campos acima</span>
+      <button class="btn btn-primary btn-sm" onclick="saveDisciplina()">
+        <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Salvar
+      </button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// DATA MODEL
+// ══════════════════════════════════════════════════════
+const COURSES = [
+  { id:'agente',       name:'Agente de Polícia Federal',       short:'Agente',       total:4,  color:'#2563eb' },
+  { id:'escrivao',     name:'Escrivão de Polícia Federal',     short:'Escrivão',     total:20, color:'#7c3aed' },
+  { id:'delegado',     name:'Delegado de Polícia Federal',     short:'Delegado',     total:10, color:'#059669' },
+  { id:'papilo',       name:'Papiloscopista Policial Federal', short:'Papilosc.',    total:4,  color:'#d97706' },
+  { id:'perito',       name:'Perito Criminal Federal',         short:'Perito',       total:3,  color:'#dc2626' },
+];
+
+const DEFAULT_LESSON = (course, num = 1) => ({
+  curso: 'CFP 2026 - EPF',
+  ano: '2026',
+  disciplina: `ePol - ${course.name}`,
+  avaliacao: 'Prova Prática',
+  duracao: '2h/a',
+  objetivos: '',
+  conteudos: '',
+  estrategias: '',
+  recursos: 'Kit multimídia;\nSlides;\nLaboratório de informática com acesso à internet, um computador para cada aluno.',
+});
+
+const DEFAULT_DISCIPLINA = (course) => ({
+  curso: 'CFP 2026 - EPF',
+  ano: '2026',
+  cargaHoraria: `${course.total * 2}h/a (${course.total} aulas de 2h/a)`,
+  ementa: '',
+  objetivoGeral: '',
+  conteudoProgramatico: '',
+  metodologia: '',
+  avaliacao: '',
+  recursos: 'Kit multimídia;\nSlides;\nLaboratório de informática com acesso à internet, um computador para cada aluno.',
+  bibliografia: '',
+});
+
+// ── Seed data – Agente Aula 01 ────────────────────────
+const SEED = {
+  agente_1: {
+    curso:'CFP 2026 - EPF', ano:'2026',
+    disciplina:'ePol - Agente de Polícia Federal',
+    avaliacao:'Prova Prática', duracao:'2h/a',
+    objetivos:`Descrever o funcionamento e os conceitos gerais do sistema ePol.
+Utilizar o ambiente de treino do ePol.
+Descrever as funcionalidades gerais da tela "Minhas Tarefas" e Menu Lateral.
+Descrever o conceito e criar um Registro de Fato (RDF).
+Descrever os componentes da tela do caso.
+Realizar pesquisas avançadas de casos, pessoas, bens e peças.`,
+    conteudos:`Visão Geral do Sistema (propósito, conceitos, funcionamento, tipos de caso).
+Acesso ao sistema de treino.
+Principais funções da tela Minhas Tarefas e do menu lateral.
+Criação de Registro de Fato (RDF) – Protocolo e Análise do Caso.
+Informações do cabeçalho do caso e descrição das abas do caso.
+Telas de Pesquisa Avançada: Casos, pessoas, bens e peças.`,
+    estrategias:`0–15 min · Introdução
+Recepção dos alunos. Apresentação dos professores. Apresentação do Plano de Disciplina e objetivos da aula. Recados importantes sobre a pasta da turma no SharePoint.
+
+15–20 min · Visão Geral do Sistema ePol
+Exibir vídeo com o histórico do sistema. Explicar os tipos de caso, aprofundando apenas no RDF.
+
+20–30 min · Acesso ao Ambiente de Treino
+Login nas máquinas (usuário: academia / senha: ensino@@2024). Endereço: https://sistemastreino.pf.gov.br/epol2/. Orientar login individual (CPF / ctidpf). Caso o login não funcione, usar login do chefe de NO da turma.
+
+30–45 min · Funcionalidades da Tela Inicial
+Login com alexandre.acr. Mostrar telas "Tarefas dos Meus Casos" e "Minhas Tarefas". Explicar Barra Superior, Coluna Lateral e todos os botões do menu.
+
+45–70 min · Criação do RDF – Protocolo e Análise do Caso
+Abrir Notícia de Fato salva na pasta da turma. Passo a passo da criação do RDF com os alunos. Preencher informações conforme Roteiro de Cadastro. Gerar RDF e analisar.
+
+70–80 min · Pesquisa Avançada
+Demonstrar pesquisa de casos, pessoas, bens e peças. Pedir para os alunos buscarem Célio Serra Mattos.
+
+80–100 min · Encerramento
+Apresentar atividades extraclasse (4 RDFs até 02/02/2026). Debriefing e revisão dos objetivos. Avisar para não desligar as máquinas. Preencher formulário de avaliação.`,
+    recursos:`Kit multimídia;
+Slides de apresentação (Aula 01 - Apresentação de Aula);
+Laboratório de informática com acesso à internet, um computador para cada aluno;
+Roteiro de cadastro do RDF – Aula 01 (impresso);
+Peça da Aula 01 (Notícia de Fato);
+Pasta com 4 tarefas extraclasse;
+Arquivo "Para o aluno".`,
+  }
+};
+
+// ── State ──────────────────────────────────────────────
+let data = {};
+let disciplinas = {};
+let currentKey = null;
+let currentCourse = null;
+let currentMode = null; // 'lesson' | 'disciplina'
+let dirty = false;
+
+function key(courseId, num){ return `${courseId}_${num}`; }
+
+function initData(){
+  try {
+    const saved = localStorage.getItem('dpf_planos_v2');
+    if(saved){ 
+      try{ 
+        data = JSON.parse(saved); 
+      } catch(e){ 
+        console.error('Erro ao carregar dados salvos:', e);
+        data = {}; 
+      } 
+    }
+    for(const [k,v] of Object.entries(SEED)){
+      if(!data[k]) data[k] = {...v};
+    }
+    const savedDisc = localStorage.getItem('dpf_disciplinas_v1');
+    if(savedDisc){ 
+      try{ 
+        disciplinas = JSON.parse(savedDisc); 
+      } catch(e){ 
+        console.error('Erro ao carregar disciplinas salvas:', e);
+        disciplinas = {}; 
+      } 
+    }
+  } catch(e) {
+    console.error('Erro ao inicializar dados:', e);
+    data = {};
+    disciplinas = {};
+  }
+}
+
+function saveAll(){
+  try {
+    localStorage.setItem('dpf_planos_v2', JSON.stringify(data));
+  } catch(e) {
+    console.error('Erro ao salvar dados:', e);
+    toast('Erro ao salvar: espaço de armazenamento insuficiente');
+  }
+}
+
+function saveDisciplinas(){
+  try {
+    localStorage.setItem('dpf_disciplinas_v1', JSON.stringify(disciplinas));
+  } catch(e) {
+    console.error('Erro ao salvar disciplinas:', e);
+    toast('Erro ao salvar: espaço de armazenamento insuficiente');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// SIDEBAR
+// ══════════════════════════════════════════════════════
+function completeness(d){
+  if(!d) return 0;
+  const fields = [d.objetivos,d.conteudos,d.estrategias];
+  return fields.filter(f=>f&&f.trim().length>10).length;
+}
+
+function disciplinaCompleteness(d){
+  if(!d) return 0;
+  const fields = [d.ementa,d.objetivoGeral,d.conteudoProgramatico];
+  return fields.filter(f=>f&&f.trim().length>10).length;
+}
+
+function buildSidebar(){
+  const list = document.getElementById('sidebarList');
+  list.innerHTML='';
+  COURSES.forEach(course=>{
+    const group = document.createElement('div');
+    group.className='course-group';
+    group.id=`cg_${course.id}`;
+
+    const lessons = Array.from({length:course.total},(_,i)=>i+1);
+    const filled = lessons.filter(n=>completeness(data[key(course.id,n)])===3).length;
+
+    const dc=disciplinaCompleteness(disciplinas[course.id]);
+    const discStatus=dc===3?'done':dc>0?'partial':'';
+
+    group.innerHTML=`
+      <div class="course-header" onclick="toggleCourse('${course.id}')">
+        <div class="course-toggle"><svg viewBox="0 0 10 10"><polyline points="3,2 7,5 3,8"/></svg></div>
+        <div class="course-dot" style="background:${course.color}"></div>
+        <div class="course-info">
+          <div class="course-name">${course.name}</div>
+          <div class="course-meta">${filled}/${course.total} aulas</div>
+        </div>
+        <div class="course-badge">${String(course.total).padStart(2,'0')}</div>
+      </div>
+      <div class="lessons-list" id="ll_${course.id}">
+        <div class="lesson-item disc-item" id="di_${course.id}" onclick="selectDisciplina('${course.id}')">
+          <div class="disc-status ${discStatus}"></div>
+          <div class="lesson-label">Plano de Disciplina</div>
+        </div>
+        ${lessons.map(n=>{
+          const k2=key(course.id,n);
+          const c=completeness(data[k2]);
+          const status=c===3?'done':c>0?'partial':'';
+          return `<div class="lesson-item" id="li_${k2}" onclick="selectLesson('${course.id}',${n})">
+            <div class="lesson-status ${status}"></div>
+            <div class="lesson-label">Aula ${String(n).padStart(2,'0')} de ${String(course.total).padStart(2,'0')}</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    list.appendChild(group);
+  });
+  updateProgress();
+}
+
+function toggleCourse(id){
+  const g=document.getElementById(`cg_${id}`);
+  g.classList.toggle('open');
+}
+
+function updateProgress(){
+  let total=0,filled=0;
+  COURSES.forEach(c=>{
+    for(let i=1;i<=c.total;i++){
+      total++;
+      if(completeness(data[key(c.id,i)])===3) filled++;
+    }
+  });
+  const pct=total?Math.round(filled/total*100):0;
+  document.getElementById('progressFill').style.width=pct+'%';
+  document.getElementById('progressCount').textContent=`${filled} / ${total} aulas preenchidas`;
+}
+
+// ══════════════════════════════════════════════════════
+// EDITOR
+// ══════════════════════════════════════════════════════
+function selectLesson(courseId, num){
+  if(dirty){
+    if(currentMode==='lesson' && currentKey) saveLesson(true);
+    else if(currentMode==='disciplina' && currentCourse) saveDisciplina(true);
+  }
+
+  currentMode='lesson';
+  currentKey=key(courseId,num);
+  currentCourse=COURSES.find(c=>c.id===courseId);
+
+  // Remove active
+  document.querySelectorAll('.lesson-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`li_${currentKey}`)?.classList.add('active');
+
+  // Load data
+  const d=data[currentKey]||DEFAULT_LESSON(currentCourse, num);
+  document.getElementById('f_curso').value=d.curso||'CFP 2026 - EPF';
+  document.getElementById('f_ano').value=d.ano||'2026';
+  document.getElementById('f_disciplina').value=d.disciplina||`ePol - ${currentCourse.name}`;
+  document.getElementById('f_avaliacao').value=d.avaliacao||'Prova Prática';
+  document.getElementById('f_duracao').value=d.duracao||'2h/a';
+  document.getElementById('f_objetivos').value=d.objetivos||'';
+  document.getElementById('f_conteudos').value=d.conteudos||'';
+  document.getElementById('f_estrategias').value=d.estrategias||'';
+  document.getElementById('f_recursos').value=d.recursos||'';
+  document.getElementById('aulaBadge').textContent=`Aula ${String(num).padStart(2,'0')} / ${String(currentCourse.total).padStart(2,'0')}`;
+
+  // UI
+  document.getElementById('mainTitle').textContent=`Aula ${String(num).padStart(2,'0')} — ${currentCourse.name}`;
+  document.getElementById('mainSub').textContent=`CFP 2026 · ePol`;
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('editorArea').style.display='flex';
+  document.getElementById('disciplinaArea').style.display='none';
+  document.getElementById('btnGen').style.display='inline-flex';
+  document.getElementById('btnGenAll').style.display='inline-flex';
+  document.getElementById('btnGenDisc').style.display='none';
+  setDirty(false);
+}
+
+function setDirty(v){
+  dirty=v;
+  const id=currentMode==='disciplina'?'saveStatusDisc':'saveStatus';
+  const el=document.getElementById(id);
+  if(!el) return;
+  if(v){ el.textContent='Alterações não salvas'; el.className='save-status'; }
+  else{ el.textContent='Salvo'; el.className='save-status saved'; }
+}
+
+// Watch all fields
+['f_ano','f_avaliacao','f_duracao','f_objetivos','f_conteudos','f_estrategias','f_recursos']
+  .forEach(id=>{
+    const field = document.getElementById(id);
+    if(field) {
+      field.addEventListener('input', (e) => {
+        setDirty(true);
+        validateField(id, e.target.value);
+      });
+      field.addEventListener('blur', (e) => {
+        validateField(id, e.target.value);
+      });
+    }
+  });
+
+function collectLesson(){
+  return {
+    curso:document.getElementById('f_curso').value,
+    ano:document.getElementById('f_ano').value,
+    disciplina:document.getElementById('f_disciplina').value,
+    avaliacao:document.getElementById('f_avaliacao').value,
+    duracao:document.getElementById('f_duracao').value,
+    objetivos:document.getElementById('f_objetivos').value,
+    conteudos:document.getElementById('f_conteudos').value,
+    estrategias:document.getElementById('f_estrategias').value,
+    recursos:document.getElementById('f_recursos').value,
+  };
+}
+
+function saveLesson(silent=false){
+  if(!currentKey) {
+    if(!silent) toast('Erro: nenhuma aula selecionada');
+    return;
+  }
+  
+  try {
+    const lessonData = collectLesson();
+    
+    // Validação básica
+    if(!lessonData.curso || !lessonData.disciplina) {
+      if(!silent) toast('Erro: campos obrigatórios não preenchidos');
+      return;
+    }
+    
+    data[currentKey] = lessonData;
+    saveAll();
+    setDirty(false);
+    refreshSidebarItem(currentKey);
+    if(!silent) toast('Aula salva com sucesso');
+  } catch(e) {
+    console.error('Erro ao salvar aula:', e);
+    if(!silent) toast('Erro ao salvar aula');
+  }
+}
+
+function refreshSidebarItem(k){
+  const c=completeness(data[k]);
+  const status=c===3?'done':c>0?'partial':'';
+  const dot=document.querySelector(`#li_${k} .lesson-status`);
+  if(dot){ dot.className=`lesson-status ${status}`; }
+  // Update course meta
+  const parts=k.split('_');
+  const courseId=parts[0];
+  const course=COURSES.find(c2=>c2.id===courseId);
+  if(course){
+    const filled=Array.from({length:course.total},(_,i)=>i+1)
+      .filter(n=>completeness(data[key(courseId,n)])===3).length;
+    const meta=document.querySelector(`#cg_${courseId} .course-meta`);
+    if(meta) meta.textContent=`${filled}/${course.total} aulas`;
+  }
+  updateProgress();
+}
+
+// ══════════════════════════════════════════════════════
+// EDITOR — PLANO DE DISCIPLINA
+// ══════════════════════════════════════════════════════
+function selectDisciplina(courseId){
+  if(dirty){
+    if(currentMode==='lesson' && currentKey) saveLesson(true);
+    else if(currentMode==='disciplina' && currentCourse) saveDisciplina(true);
+  }
+
+  currentMode='disciplina';
+  currentCourse=COURSES.find(c=>c.id===courseId);
+  currentKey=null;
+
+  document.querySelectorAll('.lesson-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById(`di_${courseId}`)?.classList.add('active');
+
+  const d=disciplinas[courseId]||DEFAULT_DISCIPLINA(currentCourse);
+  document.getElementById('fd_curso').value=d.curso||'CFP 2026 - EPF';
+  document.getElementById('fd_ano').value=d.ano||'2026';
+  document.getElementById('fd_cargaHoraria').value=d.cargaHoraria||`${currentCourse.total*2}h/a`;
+  document.getElementById('fd_ementa').value=d.ementa||'';
+  document.getElementById('fd_objetivoGeral').value=d.objetivoGeral||'';
+  document.getElementById('fd_conteudoProgramatico').value=d.conteudoProgramatico||'';
+  document.getElementById('fd_metodologia').value=d.metodologia||'';
+  document.getElementById('fd_avaliacao').value=d.avaliacao||'';
+  document.getElementById('fd_recursos').value=d.recursos||'Kit multimídia;\nSlides;\nLaboratório de informática com acesso à internet, um computador para cada aluno.';
+  document.getElementById('fd_bibliografia').value=d.bibliografia||'';
+
+  document.getElementById('mainTitle').textContent=`Plano de Disciplina — ${currentCourse.name}`;
+  document.getElementById('mainSub').textContent=`CFP 2026 · ePol`;
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('editorArea').style.display='none';
+  document.getElementById('disciplinaArea').style.display='flex';
+  document.getElementById('btnGen').style.display='none';
+  document.getElementById('btnGenAll').style.display='none';
+  document.getElementById('btnGenDisc').style.display='inline-flex';
+  setDirty(false);
+}
+
+['fd_ano','fd_cargaHoraria','fd_ementa','fd_objetivoGeral','fd_conteudoProgramatico',
+ 'fd_metodologia','fd_avaliacao','fd_recursos','fd_bibliografia']
+  .forEach(id=>{
+    const field = document.getElementById(id);
+    if(field) {
+      field.addEventListener('input', (e) => {
+        setDirty(true);
+        validateField(id, e.target.value);
+      });
+      field.addEventListener('blur', (e) => {
+        validateField(id, e.target.value);
+      });
+    }
+  });
+
+function collectDisciplina(){
+  return {
+    curso: document.getElementById('fd_curso').value,
+    ano: document.getElementById('fd_ano').value,
+    cargaHoraria: document.getElementById('fd_cargaHoraria').value,
+    ementa: document.getElementById('fd_ementa').value,
+    objetivoGeral: document.getElementById('fd_objetivoGeral').value,
+    conteudoProgramatico: document.getElementById('fd_conteudoProgramatico').value,
+    metodologia: document.getElementById('fd_metodologia').value,
+    avaliacao: document.getElementById('fd_avaliacao').value,
+    recursos: document.getElementById('fd_recursos').value,
+    bibliografia: document.getElementById('fd_bibliografia').value,
+  };
+}
+
+function saveDisciplina(silent=false){
+  if(!currentCourse) {
+    if(!silent) toast('Erro: nenhuma disciplina selecionada');
+    return;
+  }
+  
+  try {
+    const disciplinaData = collectDisciplina();
+    
+    // Validação básica
+    if(!disciplinaData.curso) {
+      if(!silent) toast('Erro: campos obrigatórios não preenchidos');
+      return;
+    }
+    
+    disciplinas[currentCourse.id] = disciplinaData;
+    saveDisciplinas();
+    setDirty(false);
+    refreshDisciplinaItem(currentCourse.id);
+    if(!silent) toast('Plano de Disciplina salvo com sucesso');
+  } catch(e) {
+    console.error('Erro ao salvar disciplina:', e);
+    if(!silent) toast('Erro ao salvar disciplina');
+  }
+}
+
+function refreshDisciplinaItem(courseId){
+  const dc=disciplinaCompleteness(disciplinas[courseId]);
+  const status=dc===3?'done':dc>0?'partial':'';
+  const dot=document.querySelector(`#di_${courseId} .disc-status`);
+  if(dot){ dot.className=`disc-status ${status}`; }
+}
+
+// ══════════════════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════════════════
+let toastTimer;
+let toastQueue = [];
+
+function toast(msg, duration = 2500){
+  const el = document.getElementById('toast');
+  
+  // Se já está mostrando um toast, adiciona na fila
+  if(el.classList.contains('show')) {
+    toastQueue.push({msg, duration});
+    return;
+  }
+  
+  showToast(msg, duration);
+}
+
+function showToast(msg, duration) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.classList.remove('show');
+    
+    // Mostra próximo toast da fila
+    if(toastQueue.length > 0) {
+      const next = toastQueue.shift();
+      setTimeout(() => showToast(next.msg, next.duration), 300);
+    }
+  }, duration);
+}
+
+// Função para backup de dados
+function backupData() {
+  try {
+    const backup = {
+      timestamp: new Date().toISOString(),
+      data: data,
+      disciplinas: disciplinas
+    };
+    
+    const blob = new Blob([JSON.stringify(backup, null, 2)], 
+      {type: 'application/json'});
+    const filename = `backup_planos_aula_${new Date().toISOString().slice(0,10)}.json`;
+    
+    saveAs(blob, filename);
+    toast('Backup criado com sucesso!');
+  } catch(e) {
+    console.error('Erro ao criar backup:', e);
+    toast('Erro ao criar backup');
+  }
+}
+
+// Função para validar campos em tempo real
+function validateField(fieldId, value) {
+  const field = document.getElementById(fieldId);
+  if(!field) return true;
+  
+  let isValid = true;
+  let message = '';
+  
+  // Validações específicas
+  if(fieldId === 'f_ano' || fieldId === 'fd_ano') {
+    const year = parseInt(value);
+    if(value && (isNaN(year) || year < 2020 || year > 2030)) {
+      isValid = false;
+      message = 'Ano deve estar entre 2020 e 2030';
+    }
+  }
+  
+  if(fieldId === 'f_duracao') {
+    if(value && !value.match(/^\d+h?\/a$/i)) {
+      isValid = false;
+      message = 'Formato deve ser: 2h/a ou 2/a';
+    }
+  }
+  
+  // Visual feedback
+  if(isValid) {
+    field.style.borderColor = '';
+    field.title = '';
+  } else {
+    field.style.borderColor = '#e53e3e';
+    field.title = message;
+  }
+  
+  return isValid;
+}
+
+// ══════════════════════════════════════════════════════
+// DOCX GENERATION
+// ══════════════════════════════════════════════════════
+async function buildDocx(d, num, totalAulas){
+  const { Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,
+          AlignmentType,WidthType,BorderStyle,ShadingType,VerticalAlign,HeadingLevel } = docx;
+
+  const navy = '0F2044';
+  const navyBorder = { style:BorderStyle.SINGLE, size:8, color:navy };
+  const greyBorder = { style:BorderStyle.SINGLE, size:4, color:'AAAAAA' };
+  const borders = s=>({ top:s,bottom:s,left:s,right:s });
+
+  function headRow(text){
+    return new TableRow({ children:[
+      new TableCell({
+        shading:{ fill:navy, type:ShadingType.CLEAR },
+        borders:borders(navyBorder),
+        margins:{top:80,bottom:80,left:120,right:120},
+        children:[new Paragraph({
+          alignment:AlignmentType.CENTER,
+          children:[new TextRun({ text, bold:true, color:'FFFFFF', size:22, font:'Arial' })]
+        })]
+      })
+    ]});
+  }
+
+  function bodyRow(text){
+    return new TableRow({ children:[
+      new TableCell({
+        borders:borders(greyBorder),
+        margins:{top:80,bottom:80,left:120,right:120},
+        children:[new Paragraph({ children:[
+          new TextRun({ text, size:20, font:'Arial' })
+        ]})]
+      })
+    ]});
+  }
+
+  function fieldTable(pairs){
+    return new Table({
+      width:{size:9360,type:WidthType.DXA},
+      borders:{ insideH:{ style:BorderStyle.NONE }, insideV:{ style:BorderStyle.NONE } },
+      rows:[new TableRow({ children: pairs.flatMap(([lbl,val,lw,vw])=>[
+        new TableCell({
+          width:{size:lw,type:WidthType.DXA},
+          shading:{fill:'D9E1F2',type:ShadingType.CLEAR},
+          borders:borders(greyBorder),
+          margins:{top:60,bottom:60,left:80,right:80},
+          children:[new Paragraph({ children:[new TextRun({ text:lbl, bold:true, size:18, font:'Arial' })] })]
+        }),
+        new TableCell({
+          width:{size:vw,type:WidthType.DXA},
+          borders:borders(greyBorder),
+          margins:{top:60,bottom:60,left:80,right:80},
+          children:[new Paragraph({ children:[new TextRun({ text:val||'', size:18, font:'Arial' })] })]
+        }),
+      ])})]
+    });
+  }
+
+  function sectionTable(title, content){
+    return new Table({
+      width:{size:9360,type:WidthType.DXA},
+      rows:[headRow(title), bodyRow(content||'')]
+    });
+  }
+
+  function gap(size=6){
+    return new Paragraph({ spacing:{before:size*10,after:size*10} });
+  }
+
+  function multilineBodyRow(lines){
+    return new TableRow({ children:[
+      new TableCell({
+        borders:borders(greyBorder),
+        margins:{top:80,bottom:80,left:120,right:120},
+        children: (lines || '').split('\n').filter(line => line.trim().length > 0).map(line=>
+          new Paragraph({ children:[new TextRun({ text:line.trim(), size:20, font:'Arial' })] })
+        )
+      })
+    ]});
+  }
+
+  function sectionMultiline(title, content){
+    return new Table({
+      width:{size:9360,type:WidthType.DXA},
+      rows:[headRow(title), multilineBodyRow(content||'')]
+    });
+  }
+
+  const numStr = String(num).padStart(2,'0');
+  const totalStr = String(totalAulas).padStart(2,'0');
+
+  const doc2 = new Document({
+    sections:[{
+      properties:{ page:{ size:{width:11906,height:16838}, margin:{top:1134,bottom:1134,left:1701,right:1134} } },
+      children:[
+        // ── Cabeçalho ──
+        ...[
+          'SERVIÇO PÚBLICO FEDERAL',
+          'MJ - DEPARTAMENTO DE POLÍCIA FEDERAL',
+          'DIREN - ACADEMIA NACIONAL DE POLÍCIA',
+        ].map(t=>new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:0,after:40},
+          children:[new TextRun({ text:t, bold:true, size:22, font:'Arial' })] })),
+
+        gap(4),
+
+        new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:0,after:100},
+          children:[
+            new TextRun({ text:`PLANO DE AULA  (${numStr} / ${totalStr})`, bold:true, size:28, font:'Arial' })
+          ]
+        }),
+
+        // ── Linha 1: CURSO / ANO ──
+        fieldTable([
+          ['CURSO:', d.curso, 1200, 6360],
+          ['ANO:',  d.ano,   800,  1000],
+        ]),
+        gap(2),
+
+        // ── Linha 2: DISCIPLINA / AVALIAÇÃO ──
+        fieldTable([
+          ['DISCIPLINA:', d.disciplina, 1500, 5200],
+          ['AVALIAÇÃO:',  d.avaliacao,  1200, 1460],
+        ]),
+        gap(2),
+
+        // ── Linha 3: DURAÇÃO ──
+        fieldTable([
+          ['DURAÇÃO:', d.duracao, 1200, 8160],
+        ]),
+        gap(8),
+
+        // ── Objetivos ──
+        new Table({
+          width:{size:9360,type:WidthType.DXA},
+          rows:[
+            headRow('Objetivos Específicos'),
+            new TableRow({ children:[new TableCell({
+              borders:borders(greyBorder),
+              margins:{top:80,bottom:80,left:120,right:120},
+              children:[
+                new Paragraph({ children:[
+                  new TextRun({ text:'Ao final da aula, os alunos deverão ser capazes de:', bold:true, size:20, font:'Arial' })
+                ]}),
+                ...((d.objetivos||'').split('\n').filter(line => line.trim()).map(line=>
+                  new Paragraph({ children:[new TextRun({ text:line.trim(), size:20, font:'Arial' })] })
+                ))
+              ]
+            })]})
+          ]
+        }),
+        gap(4),
+
+        // ── Conteúdos ──
+        sectionMultiline('Conteúdos', d.conteudos),
+        gap(4),
+
+        // ── Estratégias ──
+        sectionMultiline('Estratégias de Ensino', d.estrategias),
+        gap(4),
+
+        // ── Avaliação da Aula ──
+        new Table({
+          width:{size:9360,type:WidthType.DXA},
+          rows:[
+            headRow('Avaliação da Aula'),
+            ...[
+              'Objetivos foram atingidos?\t(   ) sim   (   ) não\n\nJustificativas: _______________________________________________________',
+              'Os recursos materiais foram suficientes e adequados?\t(   ) sim   (   ) não\n\nJustificativas: _______________________________________________________',
+              'Ocorrências disciplinares?\t(   ) sim   (   ) não\n\nJustificativas: _______________________________________________________',
+              'Observações gerais:\n\n_______________________________________________________________________________',
+            ].map(q=>multilineBodyRow(q))
+          ]
+        }),
+        gap(4),
+
+        // ── Recursos ──
+        sectionMultiline('Recursos Materiais e Didáticos', d.recursos),
+      ]
+    }]
+  });
+
+  return await Packer.toBlob(doc2);
+}
+
+// Função para verificar dependências
+function checkDependencies() {
+  const missing = [];
+  if (typeof docx === 'undefined') missing.push('docx');
+  if (typeof saveAs === 'undefined') missing.push('FileSaver');
+  return missing;
+}
+
+// Função para gerar texto simples
+function generateTextDoc() {
+  if(!currentKey || !currentCourse) {
+    toast('Erro: nenhuma aula selecionada');
+    return;
+  }
+  
+  saveLesson(true);
+  const d = data[currentKey];
+  if(!d){ 
+    toast('Nenhum dado para gerar - preencha a aula primeiro');
+    return;
+  }
+  
+  const parts = currentKey.split('_');
+  const num = parseInt(parts[parts.length-1]);
+  const numStr = String(num).padStart(2,'0');
+  const totalStr = String(currentCourse.total).padStart(2,'0');
+  
+  const textContent = `
+SERVIÇO PÚBLICO FEDERAL
+MJ - DEPARTAMENTO DE POLÍCIA FEDERAL
+DIREN - ACADEMIA NACIONAL DE POLÍCIA
+
+PLANO DE AULA (${numStr} / ${totalStr})
+
+${'='.repeat(60)}
+
+CURSO: ${d.curso}
+ANO: ${d.ano}
+DISCIPLINA: ${d.disciplina}
+AVALIAÇÃO: ${d.avaliacao}
+DURAÇÃO: ${d.duracao}
+
+${'='.repeat(60)}
+OBJETIVOS ESPECÍFICOS
+${'='.repeat(60)}
+
+Ao final da aula, os alunos deverão ser capazes de:
+
+${d.objetivos || 'Não preenchido'}
+
+${'='.repeat(60)}
+CONTEÚDOS
+${'='.repeat(60)}
+
+${d.conteudos || 'Não preenchido'}
+
+${'='.repeat(60)}
+ESTRATÉGIAS DE ENSINO
+${'='.repeat(60)}
+
+${d.estrategias || 'Não preenchido'}
+
+${'='.repeat(60)}
+RECURSOS MATERIAIS E DIDÁTICOS
+${'='.repeat(60)}
+
+${d.recursos || 'Não preenchido'}
+
+${'='.repeat(60)}
+AVALIAÇÃO DA AULA
+${'='.repeat(60)}
+
+Objetivos foram atingidos?    (   ) sim   (   ) não
+Justificativas: ________________________________________________
+
+Os recursos materiais foram suficientes e adequados?    (   ) sim   (   ) não
+Justificativas: ________________________________________________
+
+Ocorrências disciplinares?    (   ) sim   (   ) não
+Justificativas: ________________________________________________
+
+Observações gerais:
+_____________________________________________________
+_____________________________________________________
+`;
+  
+  // Criar blob e fazer download
+  const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Plano_de_Aula_${numStr}_${currentCourse.id}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+  
+  toast('Download de arquivo .txt iniciado!');
+}
+
+async function generateDoc(){
+  if(!currentKey || !currentCourse) {
+    toast('Erro: nenhuma aula selecionada');
+    return;
+  }
+  
+  saveLesson(true);
+  const d=data[currentKey];
+  if(!d){ 
+    toast('Nenhum dado para gerar - preencha a aula primeiro');
+    return;
+  }
+  
+  // Validação de campos essenciais
+  if(!d.objetivos || !d.conteudos || !d.estrategias) {
+    toast('Preencha pelo menos objetivos, conteúdos e estratégias');
+    return;
+  }
+  
+  // Verificar dependências
+  const missing = checkDependencies();
+  if(missing.length > 0) {
+    const proceed = confirm(
+      `As bibliotecas necessárias (${missing.join(', ')}) não estão carregadas.\n\n` +
+      'Isso pode acontecer quando o arquivo é executado offline.\n\n' +
+      'Deseja gerar um arquivo .txt como alternativa?'
+    );
+    
+    if(proceed) {
+      generateTextDoc();
+    } else {
+      toast('Para gerar .docx, execute o arquivo em um servidor web ou com internet');
+    }
+    return;
+  }
+  
+  const parts=currentKey.split('_');
+  const num=parseInt(parts[parts.length-1]);
+  
+  if(isNaN(num)) {
+    toast('Erro: número da aula inválido');
+    return;
+  }
+  
+  toast('Gerando documento .docx...');
+  try{
+    const blob=await buildDocx(d, num, currentCourse.total);
+    const fname=`Plano_de_Aula_${String(num).padStart(2,'0')}_${currentCourse.id}.docx`;
+    saveAs(blob, fname);
+    toast('Download .docx iniciado!');
+  }catch(e){ 
+    console.error('Erro ao gerar documento:', e);
+    toast('Erro ao gerar .docx - tentando alternativa...');
+    generateTextDoc();
+  }
+}
+
+async function generateAll(){
+  if(!currentCourse) {
+    toast('Erro: nenhum curso selecionado');
+    return;
+  }
+  
+  if(currentMode === 'lesson') {
+    saveLesson(true);
+  }
+  
+  let count=0;
+  let errors=0;
+  
+  toast('Iniciando geração de documentos...');
+  
+  for(let n=1; n<=currentCourse.total; n++){
+    const k=key(currentCourse.id, n);
+    const d=data[k];
+    
+    if(!d || !d.objetivos || !d.conteudos || !d.estrategias) {
+      errors++;
+      continue;
+    }
+    
+    try {
+      const blob=await buildDocx(d, n, currentCourse.total);
+      const fname=`Plano_de_Aula_${String(n).padStart(2,'0')}_${currentCourse.id}.docx`;
+      saveAs(blob, fname);
+      count++;
+      await new Promise(r=>setTimeout(r, 500)); // Aumentado o delay
+    } catch(e) {
+      console.error(`Erro na aula ${n}:`, e);
+      errors++;
+    }
+  }
+  
+  if(count > 0) {
+    toast(`${count} documentos gerados!${errors > 0 ? ` (${errors} aulas ignoradas por dados incompletos)` : ''}`);
+  } else {
+    toast('Nenhuma aula com dados completos para gerar');
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// DOCX — PLANO DE DISCIPLINA
+// ══════════════════════════════════════════════════════
+async function buildDisciplinaDocx(d, course){
+  const { Document,Packer,Paragraph,TextRun,Table,TableRow,TableCell,
+          AlignmentType,WidthType,BorderStyle,ShadingType } = docx;
+
+  const navy='0F2044';
+  const navyBorder={style:BorderStyle.SINGLE,size:8,color:navy};
+  const greyBorder={style:BorderStyle.SINGLE,size:4,color:'AAAAAA'};
+  const borders=s=>({top:s,bottom:s,left:s,right:s});
+
+  function headRow(text){
+    return new TableRow({children:[new TableCell({
+      shading:{fill:navy,type:ShadingType.CLEAR},
+      borders:borders(navyBorder),
+      margins:{top:80,bottom:80,left:120,right:120},
+      children:[new Paragraph({alignment:AlignmentType.CENTER,
+        children:[new TextRun({text,bold:true,color:'FFFFFF',size:22,font:'Arial'})]})]
+    })]});
+  }
+
+  function multilineBodyRow(lines){
+    return new TableRow({children:[new TableCell({
+      borders:borders(greyBorder),
+      margins:{top:80,bottom:80,left:120,right:120},
+      children:(lines||'').split('\n').filter(line => line.trim().length > 0).map(line=>
+        new Paragraph({children:[new TextRun({text:line.trim(),size:20,font:'Arial'})]})
+      )
+    })]});
+  }
+
+  function sectionMultiline(title,content){
+    return new Table({width:{size:9360,type:WidthType.DXA},
+      rows:[headRow(title),multilineBodyRow(content||'')]});
+  }
+
+  function fieldTable(pairs){
+    return new Table({
+      width:{size:9360,type:WidthType.DXA},
+      borders:{insideH:{style:BorderStyle.NONE},insideV:{style:BorderStyle.NONE}},
+      rows:[new TableRow({children:pairs.flatMap(([lbl,val,lw,vw])=>[
+        new TableCell({width:{size:lw,type:WidthType.DXA},shading:{fill:'D9E1F2',type:ShadingType.CLEAR},
+          borders:borders(greyBorder),margins:{top:60,bottom:60,left:80,right:80},
+          children:[new Paragraph({children:[new TextRun({text:lbl,bold:true,size:18,font:'Arial'})]})]
+        }),
+        new TableCell({width:{size:vw,type:WidthType.DXA},
+          borders:borders(greyBorder),margins:{top:60,bottom:60,left:80,right:80},
+          children:[new Paragraph({children:[new TextRun({text:val||'',size:18,font:'Arial'})]})]
+        }),
+      ])})]
+    });
+  }
+
+  function gap(size=6){
+    return new Paragraph({spacing:{before:size*10,after:size*10}});
+  }
+
+  const doc2=new Document({sections:[{
+    properties:{page:{size:{width:11906,height:16838},margin:{top:1134,bottom:1134,left:1701,right:1134}}},
+    children:[
+      ...[
+        'SERVIÇO PÚBLICO FEDERAL',
+        'MJ - DEPARTAMENTO DE POLÍCIA FEDERAL',
+        'DIREN - ACADEMIA NACIONAL DE POLÍCIA',
+      ].map(t=>new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:40},
+        children:[new TextRun({text:t,bold:true,size:22,font:'Arial'})]})),
+
+      gap(4),
+
+      new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:100},
+        children:[new TextRun({text:'PLANO DE DISCIPLINA',bold:true,size:28,font:'Arial'})]}),
+
+      fieldTable([['CURSO:',d.curso,1200,6360],['ANO:',d.ano,800,1000]]),
+      gap(2),
+      fieldTable([
+        ['DISCIPLINA:',`ePol - ${course.name}`,1500,4760],
+        ['CARGA HORÁRIA:',d.cargaHoraria,1800,1300],
+      ]),
+      gap(8),
+
+      sectionMultiline('Ementa',d.ementa),
+      gap(4),
+      sectionMultiline('Objetivo Geral',d.objetivoGeral),
+      gap(4),
+      sectionMultiline('Conteúdo Programático',d.conteudoProgramatico),
+      gap(4),
+      sectionMultiline('Metodologia de Ensino',d.metodologia),
+      gap(4),
+      sectionMultiline('Critérios de Avaliação',d.avaliacao),
+      gap(4),
+      sectionMultiline('Recursos Materiais e Didáticos',d.recursos),
+      gap(4),
+      sectionMultiline('Bibliografia',d.bibliografia),
+    ]
+  }]});
+
+  return await Packer.toBlob(doc2);
+}
+
+function generateDisciplinaTextDoc() {
+  if(!currentCourse) {
+    toast('Erro: nenhuma disciplina selecionada');
+    return;
+  }
+  
+  const d = disciplinas[currentCourse.id];
+  if(!d){ 
+    toast('Nenhum dado para gerar - preencha a disciplina primeiro');
+    return;
+  }
+  
+  const textContent = `
+SERVIÇO PÚBLICO FEDERAL
+MJ - DEPARTAMENTO DE POLÍCIA FEDERAL
+DIREN - ACADEMIA NACIONAL DE POLÍCIA
+
+PLANO DE DISCIPLINA
+
+${'='.repeat(60)}
+
+CURSO: ${d.curso}
+ANO: ${d.ano}
+DISCIPLINA: ePol - ${currentCourse.name}
+CARGA HORÁRIA: ${d.cargaHoraria}
+
+${'='.repeat(60)}
+EMENTA
+${'='.repeat(60)}
+
+${d.ementa || 'Não preenchido'}
+
+${'='.repeat(60)}
+OBJETIVO GERAL
+${'='.repeat(60)}
+
+${d.objetivoGeral || 'Não preenchido'}
+
+${'='.repeat(60)}
+CONTEÚDO PROGRAMÁTICO
+${'='.repeat(60)}
+
+${d.conteudoProgramatico || 'Não preenchido'}
+
+${'='.repeat(60)}
+METODOLOGIA DE ENSINO
+${'='.repeat(60)}
+
+${d.metodologia || 'Não preenchido'}
+
+${'='.repeat(60)}
+CRITÉRIOS DE AVALIAÇÃO
+${'='.repeat(60)}
+
+${d.avaliacao || 'Não preenchido'}
+
+${'='.repeat(60)}
+RECURSOS MATERIAIS E DIDÁTICOS
+${'='.repeat(60)}
+
+${d.recursos || 'Não preenchido'}
+
+${'='.repeat(60)}
+BIBLIOGRAFIA
+${'='.repeat(60)}
+
+${d.bibliografia || 'Não preenchido'}
+`;
+  
+  const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `Plano_de_Disciplina_${currentCourse.id}.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
+  
+  toast('Download de arquivo .txt iniciado!');
+}
+
+async function generateDisciplinaDoc(){
+  if(!currentCourse) {
+    toast('Erro: nenhuma disciplina selecionada');
+    return;
+  }
+  
+  saveDisciplina(true);
+  const d=disciplinas[currentCourse.id];
+  
+  if(!d){ 
+    toast('Nenhum dado para gerar - preencha a disciplina primeiro');
+    return;
+  }
+  
+  // Validação de campos essenciais
+  if(!d.ementa || !d.objetivoGeral || !d.conteudoProgramatico) {
+    toast('Preencha pelo menos ementa, objetivo geral e conteúdo programático');
+    return;
+  }
+  
+  // Verificar dependências
+  const missing = checkDependencies();
+  if(missing.length > 0) {
+    const proceed = confirm(
+      `As bibliotecas necessárias (${missing.join(', ')}) não estão carregadas.\n\n` +
+      'Isso pode acontecer quando o arquivo é executado offline.\n\n' +
+      'Deseja gerar um arquivo .txt como alternativa?'
+    );
+    
+    if(proceed) {
+      generateDisciplinaTextDoc();
+    } else {
+      toast('Para gerar .docx, execute o arquivo em um servidor web ou com internet');
+    }
+    return;
+  }
+  
+  toast('Gerando documento .docx...');
+  try{
+    const blob=await buildDisciplinaDocx(d, currentCourse);
+    saveAs(blob, `Plano_de_Disciplina_${currentCourse.id}.docx`);
+    toast('Download .docx iniciado!');
+  }catch(e){ 
+    console.error('Erro ao gerar documento de disciplina:', e);
+    toast('Erro ao gerar .docx - tentando alternativa...');
+    generateDisciplinaTextDoc();
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════
+initData();
+buildSidebar();
+
+// Auto-open Agente
+document.getElementById('cg_agente').classList.add('open');
+
+// Atalhos de teclado
+document.addEventListener('keydown', function(e) {
+  // Ctrl+S para salvar
+  if(e.ctrlKey && e.key === 's') {
+    e.preventDefault();
+    if(currentMode === 'lesson') {
+      saveLesson();
+    } else if(currentMode === 'disciplina') {
+      saveDisciplina();
+    }
+  }
+  
+  // Ctrl+G para gerar documento
+  if(e.ctrlKey && e.key === 'g') {
+    e.preventDefault();
+    if(currentMode === 'lesson') {
+      generateDoc();
+    } else if(currentMode === 'disciplina') {
+      generateDisciplinaDoc();
+    }
+  }
+  
+  // Ctrl+B para backup
+  if(e.ctrlKey && e.key === 'b') {
+    e.preventDefault();
+    backupData();
+  }
+});
+
+// Alertar sobre dados não salvos ao sair
+window.addEventListener('beforeunload', function(e) {
+  if(dirty) {
+    e.preventDefault();
+    e.returnValue = 'Você tem alterações não salvas. Tem certeza que deseja sair?';
+  }
+});
+</script>
+</body>
+</html>
