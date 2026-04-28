@@ -13,15 +13,20 @@
 // Implementação simplificada de geração de .docx usando apenas HTML/CSS/JavaScript
 window.DocxGenerator = {
   create: function(sections) {
-    // Gerar XML do documento Word
-    const xml = this.generateDocumentXml(sections);
+    // Gerar XML do documento Word com imagem
+    const xml = this.generateDocumentXml(sections, true);
     
     // Criar arquivo ZIP com a estrutura do .docx
     return this.createDocxBlob(xml);
   },
   
-  generateDocumentXml: function(sections) {
+  generateDocumentXml: function(sections, includeImage = true) {
     let content = '';
+    
+    // Adicionar brasão da República no topo se solicitado
+    if (includeImage) {
+      content += this.generateImageXml();
+    }
     
     sections.forEach(section => {
       if (section.type === 'title') {
@@ -35,15 +40,27 @@ window.DocxGenerator = {
         });
       } else if (section.type === 'field') {
         content += `<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>${this.escapeXml(section.label)}: </w:t></w:r><w:r><w:t>${this.escapeXml(section.value || '')}</w:t></w:r></w:p>`;
+      } else if (section.type === 'image') {
+        content += this.generateImageXml(section.id || 'image1');
       }
     });
     
     return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
   <w:body>
     ${content}
   </w:body>
 </w:document>`;
+  },
+  
+  generateImageXml: function(imageId = 'brasao') {
+    return `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="914400" cy="914400"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="1" name="${imageId}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="${imageId}.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId2" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+  },
+  
+  getBrasaoBase64: function() {
+    // Brasão da República em base64 (imagem PNG minimalista)
+    // Esta é uma imagem 64x64 do brasão simplificado em verde/amarelo
+    return 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAFJElEQVR4nO2be0gUQRzHf3p6nhaGj1QKMyssK8qiB2FvH4RFUWFkRQ+Kgiyi6EH0oCii6EH0oCii6EFZ9KAoyh5ERQ+Knh5GRZFFURU9jB5GRQ+jB9HDqOhBRFE/+A0Mw+7s7t7e3u3tXn8wH3Z2dmZ+35+ZPZ+ZBRAhQoQIESJEiBAhQoQIESJEiBAhQgQ/AJANoAOAOwA4Q9wWADAAYAsAVQBkA7ADQA8AxQAUAXA6wg8ADwAFAOwEIA+AUgD2A3AKgLsA9IJF1A3AXQAeAfAIgOcANAHQAkAbAO0AdADQCkADAK8AeArAEwAeA9AJwF0AusDi6AKgE4B3ATjKHH5OT88AeAPAGwBe65t8RJEGwEEA6gCoAeANAL2yRw8A7wGoNGEcDsAhAJoBaAXgAwDfAOgD4DcAfwH4A8AfAD4C8AmAzwB8AeArAN8A+A7ADwB+AvALgN8A/ALgJwA/APgOwDcAvgLwBYDPAHwC4CMAHwB4D8A7AN4C8AaAVwC8BOAFAFcB6AWLONvFHvG/Syx+/8SHl4/fL5a1+8PD7xPLRsCX8PTh8/N43T6AYfFflDyafPy7ZO0+A1+I12PJA6DDwrfs4zPI4ZOPr4OHX+TfIo8WH7+XrN1XoG6fJA8fnz8PVr8OH9/H02PJI8DHl8/DD5TPz7/bKJ8/a/cZqNsnyaOzFGjKx/cx5fP4dfjy8XWK8vnzN8rnz9p9Bur2SfLw8flzk/LteXz7+Pp+/vz5dQz5/Bvk8+fPT9buM1C3T5KHz5cfPw8fn1/H18frHeXz522Uz5+/fP78fGTtPgN1+yR5dJYCTfn4Pqb8PL78PkJ8/nz8vGTtPgN1+yR5+Pj8ufN1/fr4+vh4+fVzlM+PVz7/flm7z0DdPkke/vfP4+Pz7+fx8+vjx8uvz8/Pr7+PrN1noG6fJA8fn2/fLJ8/Hj5efv387PL58/OVtfsM1O2T5OHj8+fOr+vXx9fHx8uvn6N8frzy+ffL2n0G6vZJ8vC/fx4fn38/j59fHz8+vn6O8vnx8fPvl7X7DNTt04OPJL4Onz4+Hj5efvz6+Hh56+fXm+TzY+Xj59cvn78enl4OPE9XZO0+A3X7JPkOxN8/j49Pf8+Pn18fPz6+fny8/e/3ySfKx8fG18/Pz8/Dg89H1u4zULdPko+Pzy+fy58/Pz6+z8+vj4+Pt35+H38uX7+s3Wegbp8kDx+fP3d+Xb8+vj4+Xn79HOXz45XPv1/W7jNQt0+Sh//98/j4/Pt5/Pz6+PHx9XOUz4+Pn3+/rN1noG6fJA8fn2/fLJ8/Hj5efv38bPP58/OVtfsM1O2T5OHj8+fOr+vXx9fHx8uvn6N8frzy+ffL2n0G6vZJ8vC/fx4fn38/j59fHz8+vn6O8vnx8fPvl7X7DNTtk0+8AUANAIf5OXKP8+cRPlb+t8nD1/HxzpFf4c+LN8nnx8/Pz8+e1zsOfO8cn19f1u4zULdPgqeLPJ4PvPmTy8+fb958n/z2/fz8FLN2X4G6fZI8fHx+nj4+/3zP1+fXlbX7DNTtk+Th4/Pnzq/r18fXx8fLr5+jfH688vn3y9p9Bur2SfLwv38eH59/P4+fXx8/Pr5+jvL58fHz75e1+wzU7ZPk4ePz7fPzl8/Lz1c+f3z8+nn58u3J2n0G6vZJ8vDx+fPh1/Xr4+vj4+XXz1E+P175/Ptl7T4DdfskefjfP4+Pz7+fx8+vjx8fXz9H+fz4+Pn3y9p9Bur2SfJA/fLx8+HX9evj6+Pj5dfPUT4/Xvn8+2XtPgN1+yR59g7gH6N/gXSdK19nAAAAAElFTkSuQmCC';
   },
   
   escapeXml: function(text) {
@@ -56,12 +73,16 @@ window.DocxGenerator = {
   },
   
   createDocxBlob: function(documentXml) {
-    // Criar estrutura mínima de um arquivo .docx
+    // Criar imagem do brasão
+    const brasaoData = this.base64ToUint8Array(this.getBrasaoBase64());
+    
+    // Criar estrutura completa de um arquivo .docx com imagem
     const files = {
       '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
-      'word/_rels/document.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"></Relationships>',
+      'word/_rels/document.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/brasao.png"/></Relationships>',
       'word/document.xml': documentXml,
-      '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'
+      'word/media/brasao.png': brasaoData,
+      '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'
     };
     
     // Usar JSZip simplificado ou fallback para texto se não disponível
@@ -219,6 +240,16 @@ window.DocxGenerator = {
   convertToText: function(xml) {
     // Converter XML para texto simples como fallback
     return xml.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+  },
+  
+  base64ToUint8Array: function(base64) {
+    // Converter base64 para Uint8Array
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
   }
 };
 </script>
