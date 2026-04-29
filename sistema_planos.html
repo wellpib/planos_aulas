@@ -52,6 +52,8 @@ window.DocxGenerator = {
         content += `<w:p><w:pPr><w:spacing w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>${this.escapeXml(section.label)}: </w:t></w:r><w:r><w:t>${this.escapeXml(section.value || '')}</w:t></w:r></w:p>`;
       } else if (section.type === 'image') {
         content += this.generateImageXml(section.id || 'image1');
+      } else if (section.type === 'unidade_card') {
+        content += this.generateUnidadeCardXml(section.num, section.totalStr, section.objetivos, section.conteudo, section.metodologia);
       }
     });
     
@@ -77,6 +79,23 @@ window.DocxGenerator = {
     return `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${imageSize}" cy="${imageSize}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="2" name="${imageId}" descr="Imagem do Cabeçalho"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="2" name="${imageId}.jpg" descr="Imagem Customizada do Cabeçalho"/><pic:cNvPicPr><a:picLocks noChangeAspect="1" noChangeArrowheads="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId3" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" cstate="print"><a:extLst><a:ext uri="{28A0092B-C50C-407E-A947-70E740481C1C}"/></a:extLst></a:blip><a:srcRect/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="${imageSize}" cy="${imageSize}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
   },
   
+  generateUnidadeCardXml: function(num, totalStr, objetivos, conteudo, metodologia) {
+    const esc = (s) => this.escapeXml(s || '');
+
+    const labelRow = (text) =>
+      `<w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="9360" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="D9E1F2"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr><w:t>${esc(text)}</w:t></w:r></w:p></w:tc></w:tr>`;
+
+    const contentRow = (text) => {
+      const lines = (text || '').split('\n').filter(l => l.trim());
+      const paragraphs = lines.length
+        ? lines.map(l => `<w:p><w:pPr><w:spacing w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${esc(l.trim())}</w:t></w:r></w:p>`).join('')
+        : '<w:p><w:r><w:t></w:t></w:r></w:p>';
+      return `<w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="9360" w:type="dxa"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${paragraphs}</w:tc></w:tr>`;
+    };
+
+    return `<w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:left w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:right w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="7200"/><w:gridCol w:w="2160"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="7200" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="0F2044"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="22"/></w:rPr><w:t>UNIDADE ${num}</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="2160" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="0F2044"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:color w:val="AAAACC"/><w:sz w:val="18"/></w:rPr><w:t>Aula ${num} / ${totalStr}</w:t></w:r></w:p></w:tc></w:tr>${labelRow('OBJETIVOS ESPECÍFICOS')}${contentRow(objetivos)}${labelRow('CONTEÚDO')}${contentRow(conteudo)}${labelRow('ESTRATÉGIAS / RECURSOS / CARGA HORÁRIA / AVALIAÇÃO')}${contentRow(metodologia)}</w:tbl><w:p><w:pPr><w:spacing w:before="80" w:after="0"/></w:pPr></w:p>`;
+  },
+
   getBrasaoBase64: function() {
     // Brasão da República - imagem WebP oficial do projeto (brasao.jpeg convertida automaticamente)
     return 'UklGRhYHAQBXRUJQVlA4TAoHAQAv+cA+EOpg3LaRI0v9dz1hL/4jYgKyhoQ7A5RcVpNcJKCkSckaQDQt' +
@@ -448,11 +467,15 @@ label{font-size:11.5px;font-weight:600;color:var(--text2);text-transform:upperca
 input[type=text],input[type=number],textarea,select{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius);font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--text);background:var(--surface);transition:border-color .15s,box-shadow .15s;resize:vertical;outline:none}
 input:focus,textarea:focus,select:focus{border-color:var(--navy3);box-shadow:0 0 0 3px rgba(30,58,114,.1)}
 input[readonly]{background:#f8f9fb;color:var(--text3);cursor:default}
-textarea{line-height:1.6;min-height:90px}
-textarea.tall{min-height:170px}
+textarea{line-height:1.6;min-height:80px;overflow-y:hidden}
+textarea.tall{min-height:120px}
 .section-divider{grid-column:1/-1;display:flex;align-items:center;gap:12px;margin:4px 0}
 .section-divider span{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
 .section-divider::before,.section-divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.unidade-card{border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.unidade-card-header{background:var(--navy);color:var(--white);padding:10px 16px;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;display:flex;align-items:center;justify-content:space-between}
+.unidade-card-header .aula-ref{font-size:10px;font-weight:400;opacity:.65;text-transform:none;letter-spacing:0}
+.unidade-card-body{padding:16px;display:flex;flex-direction:column;gap:12px;background:var(--surface)}
 /* ── FOOTER BAR ── */
 .editor-footer{background:var(--surface);border-top:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 .save-status{font-size:12px;color:var(--text3);flex:1}
@@ -668,59 +691,8 @@ DIREN - ACADEMIA NACIONAL DE POLÍCIA</textarea>
           <textarea id="fd_objetivoGeral" placeholder="Desenvolver competências relacionadas às principais funcionalidades..."></textarea>
         </div>
 
-        <div class="section-divider"><span>Objetivos Específicos por Unidade</span></div>
-
-        <div class="field-group full">
-          <label>Unidade 01</label>
-          <textarea id="fd_unidade01_objetivos" placeholder="- Descrever o funcionamento e os conceitos gerais do sistema ePol..." class="tall"></textarea>
-        </div>
-        <div class="field-group full">
-          <label>Conteúdo da Unidade 01</label>
-          <textarea id="fd_unidade01_conteudo" placeholder="Visão Geral do Sistema (propósito, conceitos, funcionamento, tipos de caso)..."></textarea>
-        </div>
-        <div class="field-group full">
-          <label>Estratégias/Recursos/Carga Horária/Avaliação - Unidade 01</label>
-          <textarea id="fd_unidade01_metodologia" placeholder="Estratégias de ensino: Aula expositiva dialogada e prática.\nRecursos: 02 professores e 01 monitor por sala...\nCarga Horária: 2 h/a ∑ 2h/a.\nAvaliação: Perguntas e respostas."></textarea>
-        </div>
-
-        <div class="field-group full">
-          <label>Unidade 02</label>
-          <textarea id="fd_unidade02_objetivos" placeholder="- Realizar a instauração de um caso e descrever os tipos de pareceres..." class="tall"></textarea>
-        </div>
-        <div class="field-group full">
-          <label>Conteúdo da Unidade 02</label>
-          <textarea id="fd_unidade02_conteudo" placeholder="Tipos de pareceres e instauração de casos..."></textarea>
-        </div>
-        <div class="field-group full">
-          <label>Estratégias/Recursos/Carga Horária/Avaliação - Unidade 02</label>
-          <textarea id="fd_unidade02_metodologia" placeholder="Estratégias de ensino: Aula expositiva dialogada e prática com exercício.\nRecursos: 02 professores e 01 monitor por sala...\nCarga Horária: 2 h/a ∑ 4h/a.\nAvaliação: Perguntas e respostas."></textarea>
-        </div>
-
-        <div class="field-group full">
-          <label>Unidade 03</label>
-          <textarea id="fd_unidade03_objetivos" placeholder="- Cadastrar uma intimação e consultar a pauta cartoraria..." class="tall"></textarea>
-        </div>
-        <div class="field-group full">
-          <label>Conteúdo da Unidade 03</label>
-          <textarea id="fd_unidade03_conteudo" placeholder="Registro das intimações e visualização da pauta cartoraria..."></textarea>
-        </div>
-        <div class="field-group full">
-          <label>Estratégias/Recursos/Carga Horária/Avaliação - Unidade 03</label>
-          <textarea id="fd_unidade03_metodologia" placeholder="Estratégias de ensino: Aula expositiva dialogada e prática com exercício.\nRecursos: 02 professores e 01 monitor por sala...\nCarga Horária: 2 h/a ∑ 6h/a.\nAvaliação: Perguntas e respostas."></textarea>
-        </div>
-
-        <div class="field-group full">
-          <label>Unidade 04</label>
-          <textarea id="fd_unidade04_objetivos" placeholder="- Identificar o fluxo de criação de despachos até o cumprimento de tarefas..." class="tall"></textarea>
-        </div>
-        <div class="field-group full">
-          <label>Conteúdo da Unidade 04</label>
-          <textarea id="fd_unidade04_conteudo" placeholder="Fluxo de criação de despachos e encaminhamento de tarefas..."></textarea>
-        </div>
-        <div class="field-group full">
-          <label>Estratégias/Recursos/Carga Horária/Avaliação - Unidade 04</label>
-          <textarea id="fd_unidade04_metodologia" placeholder="Estratégias de ensino: Aula expositiva dialogada e prática com exercício.\nRecursos: 02 professores e 01 monitor por sala...\nCarga Horária: 2 h/a ∑ 8h/a.\nAvaliação: Perguntas e respostas."></textarea>
-        </div>
+        <div class="section-divider"><span>Conteúdo Programático por Unidade</span></div>
+        <div id="unidades-container" style="grid-column:1/-1;display:flex;flex-direction:column;gap:14px"></div>
 
         <div class="section-divider"><span>Referências</span></div>
 
@@ -1245,8 +1217,22 @@ function selectLesson(courseId, num){
   document.getElementById('btnGen').style.display='inline-flex';
   document.getElementById('btnGenAll').style.display='inline-flex';
   document.getElementById('btnGenDisc').style.display='none';
+  resizeAllIn(document.getElementById('editorArea'));
   setDirty(false);
 }
+
+function autoResize(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = ta.scrollHeight + 'px';
+}
+
+function resizeAllIn(container) {
+  container.querySelectorAll('textarea').forEach(autoResize);
+}
+
+document.addEventListener('input', e => {
+  if (e.target.tagName === 'TEXTAREA') autoResize(e.target);
+});
 
 function setDirty(v){
   dirty=v;
@@ -1427,6 +1413,41 @@ function refreshSidebarItem(k){
 // ══════════════════════════════════════════════════════
 // EDITOR — PLANO DE DISCIPLINA
 // ══════════════════════════════════════════════════════
+function buildUnidades(course) {
+  const container = document.getElementById('unidades-container');
+  container.innerHTML = '';
+  const totalStr = String(course.total).padStart(2, '0');
+  for (let i = 1; i <= course.total; i++) {
+    const num = String(i).padStart(2, '0');
+    const card = document.createElement('div');
+    card.className = 'unidade-card';
+    card.innerHTML = `
+      <div class="unidade-card-header">
+        Unidade ${num}
+        <span class="aula-ref">Aula ${num} / ${totalStr}</span>
+      </div>
+      <div class="unidade-card-body">
+        <div class="field-group wide">
+          <label>Objetivos Específicos</label>
+          <textarea id="fd_unidade${num}_objetivos" rows="3" placeholder="- Ao final desta aula, o aluno deverá ser capaz de..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>Conteúdo</label>
+          <textarea id="fd_unidade${num}_conteudo" rows="3" placeholder="Tópicos abordados na aula..."></textarea>
+        </div>
+        <div class="field-group">
+          <label>Estratégias / Recursos / Carga Horária / Avaliação</label>
+          <textarea id="fd_unidade${num}_metodologia" rows="3" placeholder="Estratégias: Aula expositiva dialogada e prática.&#10;Recursos: Kit multimídia.&#10;Carga Horária: 2 h/a.&#10;Avaliação: Perguntas e respostas."></textarea>
+        </div>
+      </div>
+    `;
+    container.appendChild(card);
+    [`fd_unidade${num}_objetivos`, `fd_unidade${num}_conteudo`, `fd_unidade${num}_metodologia`].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => setDirty(true));
+    });
+  }
+}
+
 function selectDisciplina(courseId){
   if(dirty){
     if(currentMode==='lesson' && currentKey) saveLesson(true);
@@ -1468,18 +1489,13 @@ function selectDisciplina(courseId){
   document.getElementById('fd_atitude').value=d.atitude||'';
   document.getElementById('fd_ementa').value=d.ementa||'';
   document.getElementById('fd_objetivoGeral').value=d.objetivoGeral||'';
-  document.getElementById('fd_unidade01_objetivos').value=d.unidade01_objetivos||'';
-  document.getElementById('fd_unidade01_conteudo').value=d.unidade01_conteudo||'';
-  document.getElementById('fd_unidade01_metodologia').value=d.unidade01_metodologia||'';
-  document.getElementById('fd_unidade02_objetivos').value=d.unidade02_objetivos||'';
-  document.getElementById('fd_unidade02_conteudo').value=d.unidade02_conteudo||'';
-  document.getElementById('fd_unidade02_metodologia').value=d.unidade02_metodologia||'';
-  document.getElementById('fd_unidade03_objetivos').value=d.unidade03_objetivos||'';
-  document.getElementById('fd_unidade03_conteudo').value=d.unidade03_conteudo||'';
-  document.getElementById('fd_unidade03_metodologia').value=d.unidade03_metodologia||'';
-  document.getElementById('fd_unidade04_objetivos').value=d.unidade04_objetivos||'';
-  document.getElementById('fd_unidade04_conteudo').value=d.unidade04_conteudo||'';
-  document.getElementById('fd_unidade04_metodologia').value=d.unidade04_metodologia||'';
+  buildUnidades(currentCourse);
+  for (let i = 1; i <= currentCourse.total; i++) {
+    const num = String(i).padStart(2, '0');
+    document.getElementById(`fd_unidade${num}_objetivos`).value = d[`unidade${num}_objetivos`] || '';
+    document.getElementById(`fd_unidade${num}_conteudo`).value = d[`unidade${num}_conteudo`] || '';
+    document.getElementById(`fd_unidade${num}_metodologia`).value = d[`unidade${num}_metodologia`] || '';
+  }
   document.getElementById('fd_bibliografia').value=d.bibliografia||'';
   document.getElementById('fd_elaboradoPor').value=d.elaboradoPor||'';
   document.getElementById('fd_revisadoPor').value=d.revisadoPor||'';
@@ -1492,14 +1508,12 @@ function selectDisciplina(courseId){
   document.getElementById('btnGen').style.display='none';
   document.getElementById('btnGenAll').style.display='none';
   document.getElementById('btnGenDisc').style.display='inline-flex';
+  resizeAllIn(document.getElementById('disciplinaArea'));
   setDirty(false);
 }
 
 ['fd_ano','fd_disciplina','fd_cargaHoraria','fd_modalidade','fd_conhecimento','fd_habilidade',
- 'fd_atitude','fd_ementa','fd_objetivoGeral','fd_unidade01_objetivos','fd_unidade01_conteudo',
- 'fd_unidade01_metodologia','fd_unidade02_objetivos','fd_unidade02_conteudo','fd_unidade02_metodologia',
- 'fd_unidade03_objetivos','fd_unidade03_conteudo','fd_unidade03_metodologia','fd_unidade04_objetivos',
- 'fd_unidade04_conteudo','fd_unidade04_metodologia','fd_bibliografia','fd_elaboradoPor','fd_revisadoPor']
+ 'fd_atitude','fd_ementa','fd_objetivoGeral','fd_bibliografia','fd_elaboradoPor','fd_revisadoPor']
   .forEach(id=>{
     const field = document.getElementById(id);
     if(field) {
@@ -1527,18 +1541,16 @@ function collectDisciplina(){
     atitude: document.getElementById('fd_atitude').value,
     ementa: document.getElementById('fd_ementa').value,
     objetivoGeral: document.getElementById('fd_objetivoGeral').value,
-    unidade01_objetivos: document.getElementById('fd_unidade01_objetivos').value,
-    unidade01_conteudo: document.getElementById('fd_unidade01_conteudo').value,
-    unidade01_metodologia: document.getElementById('fd_unidade01_metodologia').value,
-    unidade02_objetivos: document.getElementById('fd_unidade02_objetivos').value,
-    unidade02_conteudo: document.getElementById('fd_unidade02_conteudo').value,
-    unidade02_metodologia: document.getElementById('fd_unidade02_metodologia').value,
-    unidade03_objetivos: document.getElementById('fd_unidade03_objetivos').value,
-    unidade03_conteudo: document.getElementById('fd_unidade03_conteudo').value,
-    unidade03_metodologia: document.getElementById('fd_unidade03_metodologia').value,
-    unidade04_objetivos: document.getElementById('fd_unidade04_objetivos').value,
-    unidade04_conteudo: document.getElementById('fd_unidade04_conteudo').value,
-    unidade04_metodologia: document.getElementById('fd_unidade04_metodologia').value,
+    ...Object.fromEntries(
+      Array.from({length: currentCourse?.total || 0}, (_, i) => {
+        const num = String(i + 1).padStart(2, '0');
+        return [
+          [`unidade${num}_objetivos`, document.getElementById(`fd_unidade${num}_objetivos`)?.value || ''],
+          [`unidade${num}_conteudo`,  document.getElementById(`fd_unidade${num}_conteudo`)?.value  || ''],
+          [`unidade${num}_metodologia`, document.getElementById(`fd_unidade${num}_metodologia`)?.value || ''],
+        ];
+      }).flat()
+    ),
     bibliografia: document.getElementById('fd_bibliografia').value,
     elaboradoPor: document.getElementById('fd_elaboradoPor').value,
     revisadoPor: document.getElementById('fd_revisadoPor').value,
@@ -2238,6 +2250,57 @@ async function buildDisciplinaDocx(d, course){
     return new Paragraph({spacing:{before:0,after:0,line:240}});
   }
 
+  function unidadeCard(num, totalStr, objetivos, conteudo, metodologia) {
+    const labelRow = (text) => new TableRow({children:[new TableCell({
+      columnSpan: 2,
+      shading:{fill:'D9E1F2',type:ShadingType.CLEAR},
+      borders:borders(greyBorder),
+      margins:{top:8,bottom:8,left:120,right:120},
+      children:[new Paragraph({spacing:{line:240},children:[new TextRun({text,bold:true,size:18,font:'Arial'})]})]
+    })]});
+
+    const contentRows = (text) => {
+      const lines = (text||'').split('\n').filter(l=>l.trim());
+      const paragraphs = lines.length
+        ? lines.map(l=>new Paragraph({spacing:{line:240},children:[new TextRun({text:l.trim(),size:20,font:'Arial'})]}))
+        : [new Paragraph({children:[new TextRun({text:'',size:20,font:'Arial'})]})];
+      return new TableRow({children:[new TableCell({
+        columnSpan:2,
+        borders:borders(greyBorder),
+        margins:{top:15,bottom:15,left:120,right:120},
+        children:paragraphs
+      })]});
+    };
+
+    return new Table({
+      width:{size:9360,type:WidthType.DXA},
+      rows:[
+        new TableRow({children:[
+          new TableCell({
+            width:{size:7200,type:WidthType.DXA},
+            shading:{fill:navy,type:ShadingType.CLEAR},
+            borders:borders(navyBorder),
+            margins:{top:15,bottom:15,left:120,right:120},
+            children:[new Paragraph({children:[new TextRun({text:`UNIDADE ${num}`,bold:true,color:'FFFFFF',size:22,font:'Arial'})]})]
+          }),
+          new TableCell({
+            width:{size:2160,type:WidthType.DXA},
+            shading:{fill:navy,type:ShadingType.CLEAR},
+            borders:borders(navyBorder),
+            margins:{top:15,bottom:15,left:120,right:120},
+            children:[new Paragraph({alignment:AlignmentType.RIGHT,children:[new TextRun({text:`Aula ${num} / ${totalStr}`,color:'AAAACC',size:18,font:'Arial'})]})]
+          })
+        ]}),
+        labelRow('OBJETIVOS ESPECÍFICOS'),
+        contentRows(objetivos),
+        labelRow('CONTEÚDO'),
+        contentRows(conteudo),
+        labelRow('ESTRATÉGIAS / RECURSOS / CARGA HORÁRIA / AVALIAÇÃO'),
+        contentRows(metodologia),
+      ]
+    });
+  }
+
   const doc2=new Document({sections:[{
     properties:{page:{size:{width:11906,height:16838},margin:{top:567,bottom:567,left:567,right:567}}},
     children:[
@@ -2272,29 +2335,14 @@ async function buildDisciplinaDocx(d, course){
       gap(4),
       sectionMultiline('Objetivo Geral',d.objetivoGeral),
       gap(4),
-      sectionMultiline('Unidade 01 - Objetivos',d.unidade01_objetivos),
-      gap(2),
-      sectionMultiline('Unidade 01 - Conteúdo',d.unidade01_conteudo),
-      gap(2),
-      sectionMultiline('Unidade 01 - Metodologia',d.unidade01_metodologia),
-      gap(4),
-      sectionMultiline('Unidade 02 - Objetivos',d.unidade02_objetivos),
-      gap(2),
-      sectionMultiline('Unidade 02 - Conteúdo',d.unidade02_conteudo),
-      gap(2),
-      sectionMultiline('Unidade 02 - Metodologia',d.unidade02_metodologia),
-      gap(4),
-      sectionMultiline('Unidade 03 - Objetivos',d.unidade03_objetivos),
-      gap(2),
-      sectionMultiline('Unidade 03 - Conteúdo',d.unidade03_conteudo),
-      gap(2),
-      sectionMultiline('Unidade 03 - Metodologia',d.unidade03_metodologia),
-      gap(4),
-      sectionMultiline('Unidade 04 - Objetivos',d.unidade04_objetivos),
-      gap(2),
-      sectionMultiline('Unidade 04 - Conteúdo',d.unidade04_conteudo),
-      gap(2),
-      sectionMultiline('Unidade 04 - Metodologia',d.unidade04_metodologia),
+      ...Array.from({length: course.total}, (_, i) => {
+        const num = String(i + 1).padStart(2, '0');
+        const totalStr = String(course.total).padStart(2, '0');
+        return [
+          gap(4),
+          unidadeCard(num, totalStr, d[`unidade${num}_objetivos`], d[`unidade${num}_conteudo`], d[`unidade${num}_metodologia`]),
+        ];
+      }).flat(),
       gap(4),
       sectionMultiline('Referências',d.bibliografia),
       gap(2),
@@ -2341,17 +2389,10 @@ OBJETIVO GERAL: ${d.objetivoGeral || 'Não preenchido'}
 
 OBJETIVOS ESPECÍFICOS:
 UNID	Ao término da unidade, o aluno deverá ser capaz de:	CONTEÚDO
-01	${(d.unidade01_objetivos || 'Não preenchido').replace(/\n/g, '\n\t')}	${(d.unidade01_conteudo || 'Não preenchido').replace(/\n/g, '\n\t')}
-${d.unidade01_metodologia || 'Não preenchido'}
-
-02	${(d.unidade02_objetivos || 'Não preenchido').replace(/\n/g, '\n\t')}	${(d.unidade02_conteudo || 'Não preenchido').replace(/\n/g, '\n\t')}
-${d.unidade02_metodologia || 'Não preenchido'}
-
-03	${(d.unidade03_objetivos || 'Não preenchido').replace(/\n/g, '\n\t')}	${(d.unidade03_conteudo || 'Não preenchido').replace(/\n/g, '\n\t')}
-${d.unidade03_metodologia || 'Não preenchido'}
-
-04	${(d.unidade04_objetivos || 'Não preenchido').replace(/\n/g, '\n\t')}	${(d.unidade04_conteudo || 'Não preenchido').replace(/\n/g, '\n\t')}
-${d.unidade04_metodologia || 'Não preenchido'}
+${Array.from({length: currentCourse.total}, (_, i) => {
+  const num = String(i + 1).padStart(2, '0');
+  return `${num}\t${(d[`unidade${num}_objetivos`] || 'Não preenchido').replace(/\n/g, '\n\t')}\t${(d[`unidade${num}_conteudo`] || 'Não preenchido').replace(/\n/g, '\n\t')}\n${d[`unidade${num}_metodologia`] || 'Não preenchido'}`;
+}).join('\n\n')}
 
 REFERÊNCIAS:
 
@@ -2437,22 +2478,17 @@ async function generateDisciplinaDoc(){
       { type: 'paragraph', text: d.ementa },
       { type: 'header', text: 'OBJETIVO GERAL' },
       { type: 'paragraph', text: d.objetivoGeral },
-      { type: 'header', text: 'UNIDADE 01' },
-      { type: 'field', label: 'Objetivos', value: d.unidade01_objetivos },
-      { type: 'field', label: 'Conteúdo', value: d.unidade01_conteudo },
-      { type: 'field', label: 'Metodologia', value: d.unidade01_metodologia },
-      { type: 'header', text: 'UNIDADE 02' },
-      { type: 'field', label: 'Objetivos', value: d.unidade02_objetivos },
-      { type: 'field', label: 'Conteúdo', value: d.unidade02_conteudo },
-      { type: 'field', label: 'Metodologia', value: d.unidade02_metodologia },
-      { type: 'header', text: 'UNIDADE 03' },
-      { type: 'field', label: 'Objetivos', value: d.unidade03_objetivos },
-      { type: 'field', label: 'Conteúdo', value: d.unidade03_conteudo },
-      { type: 'field', label: 'Metodologia', value: d.unidade03_metodologia },
-      { type: 'header', text: 'UNIDADE 04' },
-      { type: 'field', label: 'Objetivos', value: d.unidade04_objetivos },
-      { type: 'field', label: 'Conteúdo', value: d.unidade04_conteudo },
-      { type: 'field', label: 'Metodologia', value: d.unidade04_metodologia },
+      ...Array.from({length: currentCourse.total}, (_, i) => {
+        const num = String(i + 1).padStart(2, '0');
+        return [{
+          type: 'unidade_card',
+          num,
+          totalStr: String(currentCourse.total).padStart(2, '0'),
+          objetivos:   d[`unidade${num}_objetivos`],
+          conteudo:    d[`unidade${num}_conteudo`],
+          metodologia: d[`unidade${num}_metodologia`],
+        }];
+      }).flat(),
       { type: 'header', text: 'REFERÊNCIAS' },
       { type: 'paragraph', text: d.bibliografia },
       { type: 'paragraph', text: d.elaboradoPor },
@@ -2570,27 +2606,23 @@ function addImportButton() {
     await initData();
     buildSidebar();
     addImportButton();
-    
-    console.log('✅ Sistema inicializado com IndexedDB');
-    
-    // Verificar estatísticas do banco
+
+    document.getElementById('cg_agente')?.classList.add('open');
+
+    console.log('✅ Sistema inicializado com SQLite');
+
     const stats = await planosDB.createBackup();
     const planosCount = Object.keys(stats.data || {}).length;
     const disciplinasCount = Object.keys(stats.disciplinas || {}).length;
-    
     console.log(`📊 Dados carregados: ${planosCount} planos, ${disciplinasCount} disciplinas`);
-    
+
   } catch (error) {
     console.error('❌ Erro na inicialização:', error);
     toast('Aviso: Sistema iniciado em modo de compatibilidade');
-    
-    // Fallback para inicialização simples
     buildSidebar();
+    document.getElementById('cg_agente')?.classList.add('open');
   }
 })();
-
-// Auto-open Agente
-document.getElementById('cg_agente').classList.add('open');
 
 // Atalhos de teclado
 document.addEventListener('keydown', function(e) {
