@@ -40,16 +40,39 @@ window.DocxGenerator = {
     
     sections.forEach(section => {
       if (section.type === 'title') {
-        content += `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:line="240" w:lineRule="exact"/><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>${this.escapeXml(section.text)}</w:t></w:r></w:p>`;
+        content += `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>${this.escapeXml(section.text)}</w:t></w:r></w:p>`;
       } else if (section.type === 'header') {
-        content += `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:line="240" w:lineRule="exact"/><w:rPr><w:b/><w:sz w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="22"/></w:rPr><w:t>${this.escapeXml(section.text)}</w:t></w:r></w:p>`;
+        content += `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/><w:rPr><w:b/><w:sz w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="22"/></w:rPr><w:t>${this.escapeXml(section.text)}</w:t></w:r></w:p>`;
       } else if (section.type === 'paragraph') {
         const lines = section.text.split('\n');
         lines.forEach(line => {
-          content += `<w:p><w:pPr><w:spacing w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t>${this.escapeXml(line)}</w:t></w:r></w:p>`;
+          content += `<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t>${this.escapeXml(line)}</w:t></w:r></w:p>`;
         });
       } else if (section.type === 'field') {
-        content += `<w:p><w:pPr><w:spacing w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>${this.escapeXml(section.label)}: </w:t></w:r><w:r><w:t>${this.escapeXml(section.value || '')}</w:t></w:r></w:p>`;
+        content += `<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t xml:space="preserve">${this.escapeXml(section.label)}: </w:t></w:r><w:r><w:t>${this.escapeXml(section.value || '')}</w:t></w:r></w:p>`;
+      } else if (section.type === 'gap') {
+        content += `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr></w:p>`;
+      } else if (section.type === 'section') {
+        const hdr = `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="0F2044"/><w:tcMar><w:top w:w="120" w:type="dxa"/><w:bottom w:w="120" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="22"/></w:rPr><w:t>${this.escapeXml(section.label)}</w:t></w:r></w:p></w:tc></w:tr>`;
+        const slines = (section.text || '').split('\n').filter(l => l.trim());
+        const sparas = slines.length
+          ? slines.map(l => `<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(l.trim())}</w:t></w:r></w:p>`).join('')
+          : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+        const body = `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${sparas}</w:tc></w:tr>`;
+        content += `<w:tbl><w:tblPr><w:tblW w:w="10772" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:left w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:right w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="10772"/></w:tblGrid>${hdr}${body}</w:tbl><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr></w:p>`;
+      } else if (section.type === 'mapa_competencias') {
+        const e2 = (s) => this.escapeXml(s || '');
+        const navyHdr = `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="0F2044"/><w:tcMar><w:top w:w="120" w:type="dxa"/><w:bottom w:w="120" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="22"/></w:rPr><w:t>MAPA DE COMPETÊNCIAS</w:t></w:r></w:p></w:tc></w:tr>`;
+        const subField = (label, text) => {
+          const lbl = `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="D9E1F2"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr><w:t>${e2(label)}</w:t></w:r></w:p></w:tc></w:tr>`;
+          const lines = (text || '').split('\n').filter(l => l.trim());
+          const paras = lines.length
+            ? lines.map(l => `<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${e2(l.trim())}</w:t></w:r></w:p>`).join('')
+            : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+          const cnt = `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${paras}</w:tc></w:tr>`;
+          return lbl + cnt;
+        };
+        content += `<w:tbl><w:tblPr><w:tblW w:w="10772" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:left w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:right w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="10772"/></w:tblGrid>${navyHdr}${subField('CONHECIMENTO',section.conhecimento)}${subField('HABILIDADE',section.habilidade)}${subField('ATITUDE',section.atitude)}</w:tbl><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr></w:p>`;
       } else if (section.type === 'image') {
         content += this.generateImageXml(section.id || 'image1');
       } else if (section.type === 'unidade_card') {
@@ -83,17 +106,17 @@ window.DocxGenerator = {
     const esc = (s) => this.escapeXml(s || '');
 
     const labelRow = (text) =>
-      `<w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="9360" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="D9E1F2"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr><w:t>${esc(text)}</w:t></w:r></w:p></w:tc></w:tr>`;
+      `<w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="D9E1F2"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr><w:t>${esc(text)}</w:t></w:r></w:p></w:tc></w:tr>`;
 
     const contentRow = (text) => {
       const lines = (text || '').split('\n').filter(l => l.trim());
       const paragraphs = lines.length
-        ? lines.map(l => `<w:p><w:pPr><w:spacing w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${esc(l.trim())}</w:t></w:r></w:p>`).join('')
-        : '<w:p><w:r><w:t></w:t></w:r></w:p>';
-      return `<w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="9360" w:type="dxa"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${paragraphs}</w:tc></w:tr>`;
+        ? lines.map(l => `<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${esc(l.trim())}</w:t></w:r></w:p>`).join('')
+        : '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>';
+      return `<w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="10772" w:type="dxa"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${paragraphs}</w:tc></w:tr>`;
     };
 
-    return `<w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:left w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:right w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="7200"/><w:gridCol w:w="2160"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="7200" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="0F2044"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="22"/></w:rPr><w:t>UNIDADE ${num}</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="2160" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="0F2044"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:color w:val="AAAACC"/><w:sz w:val="18"/></w:rPr><w:t>Aula ${num} / ${totalStr}</w:t></w:r></w:p></w:tc></w:tr>${labelRow('OBJETIVOS ESPECÍFICOS')}${contentRow(objetivos)}${labelRow('CONTEÚDO')}${contentRow(conteudo)}${labelRow('ESTRATÉGIAS / RECURSOS / CARGA HORÁRIA / AVALIAÇÃO')}${contentRow(metodologia)}</w:tbl><w:p><w:pPr><w:spacing w:before="80" w:after="0"/></w:pPr></w:p>`;
+    return `<w:tbl><w:tblPr><w:tblW w:w="10772" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:left w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:right w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:insideV w:val="none" w:sz="0" w:space="0" w:color="auto"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="8286"/><w:gridCol w:w="2486"/></w:tblGrid><w:tr><w:tc><w:tcPr><w:tcW w:w="8286" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="0F2044"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="22"/></w:rPr><w:t>UNIDADE ${num}</w:t></w:r></w:p></w:tc><w:tc><w:tcPr><w:tcW w:w="2486" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="0F2044"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:color w:val="AAAACC"/><w:sz w:val="18"/></w:rPr><w:t>Aula ${num} / ${totalStr}</w:t></w:r></w:p></w:tc></w:tr>${labelRow('OBJETIVOS ESPECÍFICOS')}${contentRow(objetivos)}${labelRow('CONTEÚDO')}${contentRow(conteudo)}${labelRow('ESTRATÉGIAS / RECURSOS / CARGA HORÁRIA / AVALIAÇÃO')}${contentRow(metodologia)}</w:tbl><w:p><w:pPr><w:spacing w:before="80" w:after="0"/></w:pPr></w:p>`;
   },
 
   getBrasaoBase64: function() {
@@ -525,6 +548,7 @@ textarea.tall{min-height:120px}
       <h1 id="mainTitle">Selecione uma aula</h1>
       <p id="mainSub">Clique em uma aula na barra lateral para editar</p>
     </div>
+    <span class="aula-badge" id="aulaBadge" style="display:none">Aula 00 / 00</span>
     <button class="btn btn-ghost btn-sm" id="btnGenAll" onclick="generateAll()" style="display:none">
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       Gerar todos da disciplina
@@ -574,10 +598,6 @@ textarea.tall{min-height:120px}
           <label>Duração</label>
           <input type="text" id="f_duracao" placeholder="Ex: 2h/a">
         </div>
-        <div class="field-group" style="align-items:flex-start;justify-content:flex-end;padding-top:20px">
-          <span class="aula-badge" id="aulaBadge">Aula 00 / 00</span>
-        </div>
-
         <div class="section-divider"><span>Conteúdo pedagógico</span></div>
 
         <div class="field-group full">
@@ -646,7 +666,7 @@ DIREN - ACADEMIA NACIONAL DE POLÍCIA</textarea>
 
         <div class="field-group">
           <label>Curso</label>
-          <input type="text" id="fd_curso" readonly>
+          <input type="text" id="fd_curso" placeholder="Ex: CFP 2026 - EPF">
         </div>
         <div class="field-group">
           <label>Ano</label>
@@ -660,9 +680,13 @@ DIREN - ACADEMIA NACIONAL DE POLÍCIA</textarea>
           <label>Carga Horária</label>
           <input type="text" id="fd_cargaHoraria" placeholder="Ex: 8 h/a">
         </div>
-        <div class="field-group full">
+        <div class="field-group">
           <label>Modalidade</label>
           <input type="text" id="fd_modalidade" placeholder="Ex: Presencial">
+        </div>
+        <div class="field-group">
+          <label>Avaliação</label>
+          <input type="text" id="fd_avaliacao" placeholder="Ex: Prova Prática">
         </div>
 
         <div class="section-divider"><span>Mapa de Competências</span></div>
@@ -690,9 +714,19 @@ DIREN - ACADEMIA NACIONAL DE POLÍCIA</textarea>
           <label>Objetivo Geral</label>
           <textarea id="fd_objetivoGeral" placeholder="Desenvolver competências relacionadas às principais funcionalidades..."></textarea>
         </div>
+        <div class="field-group full">
+          <label>Pré-requisitos</label>
+          <textarea id="fd_prerequisitos" placeholder="Descreva os conhecimentos ou habilidades prévios necessários..."></textarea>
+        </div>
 
         <div class="section-divider"><span>Conteúdo Programático por Unidade</span></div>
         <div id="unidades-container" style="grid-column:1/-1;display:flex;flex-direction:column;gap:14px"></div>
+
+        <div class="section-divider"><span>Avaliação / Verificação Especial</span></div>
+        <div class="field-group full">
+          <label>Avaliação / Verificação Especial</label>
+          <textarea id="fd_avaliacaoEspecial" placeholder="Descreva a avaliação ou verificação especial prevista para esta disciplina..."></textarea>
+        </div>
 
         <div class="section-divider"><span>Referências</span></div>
 
@@ -733,7 +767,7 @@ const COURSES = [
   { id:'escrivao',     name:'Escrivão de Polícia Federal',     short:'Escrivão',     total:20, color:'#7c3aed' },
   { id:'delegado',     name:'Delegado de Polícia Federal',     short:'Delegado',     total:10, color:'#059669' },
   { id:'papilo',       name:'Papiloscopista Policial Federal', short:'Papilosc.',    total:4,  color:'#d97706' },
-  { id:'perito',       name:'Perito Criminal Federal',         short:'Perito',       total:3,  color:'#dc2626' },
+  { id:'perito',       name:'Perito Criminal Federal',         short:'Perito',       total:4,  color:'#dc2626' },
 ];
 
 const DEFAULT_LESSON = (course, num = 1) => ({
@@ -759,11 +793,14 @@ const DEFAULT_DISCIPLINA = (course) => ({
   disciplina: 'ePol',
   cargaHoraria: '8 h/a',
   modalidade: 'Presencial',
+  avaliacao: 'Prova Prática',
   conhecimento: 'Conhecer os conceitos fundamentais e o funcionamento do sistema ePol, incluindo suas principais funcionalidades. Conhecer as diretrizes dos normativos internos da Polícia Federal que têm relação com o correto uso do sistema.',
   habilidade: 'Identificar e aplicar corretamente os recursos do sistema ePol, para atendimento das demandas exigidas de forma prática e eficiente.',
   atitude: 'Promover o uso adequado e responsável do sistema ePol como ferramenta essencial para o exercício da atividade de polícia judiciária, demonstrando proatividade, organização, atenção aos detalhes e compromisso com a legalidade e a integridade dos procedimentos.',
   ementa: 'Visão Geral do Sistema ePol. Funcionalidades principais. Ambiente de Treino. Cadastro e Envolvimento de Pessoas. Pesquisas Avançadas. RDF (Registro de Fato). Pareceres, MP (Mandado de Prisão). Cadastro de Tipo Penal. Despachos, Cumprimento de Tarefas e Criação de Peças. Bens e Unidades de Custódia. Flagrante.',
   objetivoGeral: 'Desenvolver competências relacionadas às principais funcionalidades do Sistema ePol, como ferramenta para o exercício da atividade de polícia judiciária.',
+  prerequisitos: '',
+  avaliacaoEspecial: '',
   unidade01_objetivos: '- Descrever o funcionamento e os conceitos gerais do sistema ePol.\n- Descrever as funcionalidades gerais da tela "Minhas Tarefas" e Menu Lateral.\n- Utilizar o ambiente de treino do ePol.\n- Descrever o conceito e criar um Registro de Fato (RDF).\n- Descrever os componentes da tela do caso.\n- Realizar pesquisas avançadas de casos, pessoas, bens e peças.',
   unidade01_conteudo: 'Visão Geral do Sistema (propósito, conceitos, funcionamento, tipos de caso). Principais funções da tela Minhas Tarefas e do menu lateral. Acesso ao sistema de treino (distribuição de logins). Criação de Registro de Fato (RDF) – Protocolo e Análise do Caso. Informações do cabeçalho do caso e descrição das abas do caso. Telas de Pesquisa Avançada: Casos, pessoas, bens e peças.',
   unidade01_metodologia: 'Estratégias de ensino: Aula expositiva dialogada e prática.\nRecursos: 02 professores e 01 monitor por sala de aula, kit multimídia, laboratório de informática ou notebook do aluno.\nCarga Horária: 2 h/a ∑ 2h/a.\nAvaliação: Perguntas e respostas.',
@@ -840,205 +877,110 @@ let dirty = false;
 function key(courseId, num){ return `${courseId}_${num}`; }
 
 // ══════════════════════════════════════════════════════
-// BANCO DE DADOS LOCAL - SQLite via WebAssembly (sql.js)
-// O banco SQLite é persistido no IndexedDB como blob binário
+// PERSISTÊNCIA LOCAL - localStorage
+// Funciona offline, sem dependência de CDN, confiável em file://
 // ══════════════════════════════════════════════════════
 
 class PlanosDB {
   constructor() {
-    this.SQL = null;
-    this.db = null;
-    this.idbName = 'PlanosAulaSQLite';
+    this.KEY_PLANOS      = 'dpf_planos_v3';
+    this.KEY_DISCIPLINAS = 'dpf_disciplinas_v2';
+    this.KEY_CONFIG      = 'dpf_config_v1';
   }
 
-  async _idbPersist() {
-    const data = this.db.export();
-    return new Promise((resolve, reject) => {
-      const req = indexedDB.open(this.idbName, 1);
-      req.onupgradeneeded = e => e.target.result.createObjectStore('sqlite', { keyPath: 'id' });
-      req.onsuccess = e => {
-        const idb = e.target.result;
-        const tx = idb.transaction(['sqlite'], 'readwrite');
-        tx.objectStore('sqlite').put({ id: 'main', data });
-        tx.oncomplete = () => { idb.close(); resolve(); };
-        tx.onerror = () => reject(tx.error);
-      };
-      req.onerror = () => reject(req.error);
-    });
+  _read(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; }
   }
 
-  async _idbLoad() {
-    return new Promise(resolve => {
-      const req = indexedDB.open(this.idbName, 1);
-      req.onupgradeneeded = e => e.target.result.createObjectStore('sqlite', { keyPath: 'id' });
-      req.onsuccess = e => {
-        const idb = e.target.result;
-        const tx = idb.transaction(['sqlite'], 'readonly');
-        const get = tx.objectStore('sqlite').get('main');
-        get.onsuccess = () => { idb.close(); resolve(get.result ? get.result.data : null); };
-        get.onerror = () => { idb.close(); resolve(null); };
-      };
-      req.onerror = () => resolve(null);
-    });
+  _write(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
   }
 
-  async init() {
-    this.SQL = await initSqlJs({
-      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
-    });
-
-    const saved = await this._idbLoad();
-    this.db = saved ? new this.SQL.Database(saved) : new this.SQL.Database();
-
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS planos (
-        id TEXT PRIMARY KEY,
-        course_id TEXT,
-        lesson_number INTEGER,
-        data TEXT,
-        last_modified TEXT
-      );
-      CREATE TABLE IF NOT EXISTS disciplinas (
-        id TEXT PRIMARY KEY,
-        data TEXT,
-        last_modified TEXT
-      );
-      CREATE TABLE IF NOT EXISTS config_store (
-        key TEXT PRIMARY KEY,
-        value TEXT
-      );
-    `);
-    await this._idbPersist();
-  }
+  async init() { /* localStorage está sempre disponível */ }
 
   async savePlano(id, plano) {
-    const courseId = id.split('_')[0];
-    const lessonNumber = parseInt(id.split('_')[1]) || 0;
-    this.db.run(
-      'INSERT OR REPLACE INTO planos (id, course_id, lesson_number, data, last_modified) VALUES (?,?,?,?,?)',
-      [id, courseId, lessonNumber, JSON.stringify(plano), new Date().toISOString()]
-    );
-    await this._idbPersist();
+    const all = this._read(this.KEY_PLANOS);
+    all[id] = plano;
+    this._write(this.KEY_PLANOS, all);
   }
 
   async loadPlano(id) {
-    const r = this.db.exec('SELECT data FROM planos WHERE id = ?', [id]);
-    return (r.length && r[0].values.length) ? JSON.parse(r[0].values[0][0]) : null;
+    return this._read(this.KEY_PLANOS)[id] || null;
   }
 
   async loadAllPlanos() {
-    const r = this.db.exec('SELECT id, data FROM planos');
-    const out = {};
-    if (r.length) r[0].values.forEach(([id, json]) => { out[id] = JSON.parse(json); });
-    return out;
+    return this._read(this.KEY_PLANOS);
   }
 
   async saveAllPlanos(planosObj) {
-    this.db.run('BEGIN TRANSACTION');
-    for (const [id, plano] of Object.entries(planosObj)) {
-      const courseId = id.split('_')[0];
-      const lessonNumber = parseInt(id.split('_')[1]) || 0;
-      this.db.run(
-        'INSERT OR REPLACE INTO planos (id, course_id, lesson_number, data, last_modified) VALUES (?,?,?,?,?)',
-        [id, courseId, lessonNumber, JSON.stringify(plano), new Date().toISOString()]
-      );
-    }
-    this.db.run('COMMIT');
-    await this._idbPersist();
+    const all = this._read(this.KEY_PLANOS);
+    Object.assign(all, planosObj);
+    this._write(this.KEY_PLANOS, all);
   }
 
   async saveDisciplina(id, disciplina) {
-    this.db.run(
-      'INSERT OR REPLACE INTO disciplinas (id, data, last_modified) VALUES (?,?,?)',
-      [id, JSON.stringify(disciplina), new Date().toISOString()]
-    );
-    await this._idbPersist();
+    const all = this._read(this.KEY_DISCIPLINAS);
+    all[id] = disciplina;
+    this._write(this.KEY_DISCIPLINAS, all);
   }
 
   async loadDisciplina(id) {
-    const r = this.db.exec('SELECT data FROM disciplinas WHERE id = ?', [id]);
-    return (r.length && r[0].values.length) ? JSON.parse(r[0].values[0][0]) : null;
+    return this._read(this.KEY_DISCIPLINAS)[id] || null;
   }
 
   async loadAllDisciplinas() {
-    const r = this.db.exec('SELECT id, data FROM disciplinas');
-    const out = {};
-    if (r.length) r[0].values.forEach(([id, json]) => { out[id] = JSON.parse(json); });
-    return out;
+    return this._read(this.KEY_DISCIPLINAS);
   }
 
   async saveAllDisciplinas(disciplinasObj) {
-    this.db.run('BEGIN TRANSACTION');
-    for (const [id, disc] of Object.entries(disciplinasObj)) {
-      this.db.run(
-        'INSERT OR REPLACE INTO disciplinas (id, data, last_modified) VALUES (?,?,?)',
-        [id, JSON.stringify(disc), new Date().toISOString()]
-      );
-    }
-    this.db.run('COMMIT');
-    await this._idbPersist();
+    const all = this._read(this.KEY_DISCIPLINAS);
+    Object.assign(all, disciplinasObj);
+    this._write(this.KEY_DISCIPLINAS, all);
   }
 
   async setConfig(key, value) {
-    this.db.run(
-      'INSERT OR REPLACE INTO config_store (key, value) VALUES (?,?)',
-      [key, JSON.stringify(value)]
-    );
-    await this._idbPersist();
+    const cfg = this._read(this.KEY_CONFIG);
+    cfg[key] = value;
+    this._write(this.KEY_CONFIG, cfg);
   }
 
   async getConfig(key) {
-    const r = this.db.exec('SELECT value FROM config_store WHERE key = ?', [key]);
-    return (r.length && r[0].values.length) ? JSON.parse(r[0].values[0][0]) : null;
+    return this._read(this.KEY_CONFIG)[key] || null;
   }
 
   async migrateFromLocalStorage() {
-    try {
-      const savedPlanos = localStorage.getItem('dpf_planos_v2');
-      if (savedPlanos) {
-        await this.saveAllPlanos(JSON.parse(savedPlanos));
-        console.log('✅ Planos de aula migrados para SQLite');
-      }
-      const savedDisciplinas = localStorage.getItem('dpf_disciplinas_v1');
-      if (savedDisciplinas) {
-        await this.saveAllDisciplinas(JSON.parse(savedDisciplinas));
-        console.log('✅ Disciplinas migradas para SQLite');
-      }
-      await this.setConfig('migration_completed', true);
+    // Migrar chaves antigas (v2/v1) se existirem
+    const oldPlanos = localStorage.getItem('dpf_planos_v2');
+    if (oldPlanos) {
+      try { await this.saveAllPlanos(JSON.parse(oldPlanos)); } catch {}
       localStorage.removeItem('dpf_planos_v2');
-      localStorage.removeItem('dpf_disciplinas_v1');
-    } catch (error) {
-      console.error('Erro na migração:', error);
-      throw error;
     }
+    const oldDisciplinas = localStorage.getItem('dpf_disciplinas_v1');
+    if (oldDisciplinas) {
+      try { await this.saveAllDisciplinas(JSON.parse(oldDisciplinas)); } catch {}
+      localStorage.removeItem('dpf_disciplinas_v1');
+    }
+    await this.setConfig('migration_completed', true);
   }
 
   async createBackup() {
-    const planos = await this.loadAllPlanos();
-    const disciplinas = await this.loadAllDisciplinas();
     return {
       timestamp: new Date().toISOString(),
-      version: 'SQLite_v1',
-      data: planos,
-      disciplinas
+      version: 'localStorage_v1',
+      data: await this.loadAllPlanos(),
+      disciplinas: await this.loadAllDisciplinas()
     };
   }
 
   async restoreBackup(backup) {
     try {
-      if (backup.data) await this.saveAllPlanos(backup.data);
+      if (backup.data)        await this.saveAllPlanos(backup.data);
       if (backup.disciplinas) await this.saveAllDisciplinas(backup.disciplinas);
       return true;
-    } catch (error) {
-      console.error('Erro ao restaurar backup:', error);
+    } catch (e) {
+      console.error('Erro ao restaurar backup:', e);
       return false;
     }
-  }
-
-  exportSQLiteFile() {
-    const data = this.db.export();
-    const blob = new Blob([data], { type: 'application/octet-stream' });
-    saveAs(blob, 'planos_aula.sqlite');
   }
 }
 
@@ -1068,7 +1010,7 @@ async function initData() {
       await planosDB.saveAllPlanos(newPlanos);
     }
 
-    console.log('✅ Banco de dados SQLite inicializado');
+    console.log('✅ Banco de dados inicializado (localStorage)');
   } catch (e) {
     console.error('Erro ao inicializar banco de dados:', e);
     toast('Erro crítico: não foi possível inicializar o banco de dados SQLite.');
@@ -1195,18 +1137,20 @@ function selectLesson(courseId, num){
   // Load data
   const d=data[currentKey]||DEFAULT_LESSON(currentCourse, num);
   
-  document.getElementById('f_curso').value=d.curso||'CFP 2026 - EPF';
+  document.getElementById('f_curso').value = disciplinas[currentCourse.id]?.curso || d.curso || 'CFP 2026 - EPF';
   document.getElementById('f_ano').value=d.ano||'2026';
   const discNome = disciplinas[currentCourse.id]?.disciplina;
   document.getElementById('f_disciplina').value = discNome || d.disciplina || `ePol - ${currentCourse.name}`;
-  document.getElementById('f_avaliacao').value=d.avaliacao||'Prova Prática';
+  document.getElementById('f_avaliacao').value = disciplinas[currentCourse.id]?.avaliacao || d.avaliacao || 'Prova Prática';
   document.getElementById('f_duracao').value=d.duracao||'2h/a';
   document.getElementById('f_objetivos').value=d.objetivos||'';
   document.getElementById('f_conteudos').value=d.conteudos||'';
   document.getElementById('f_estrategias').value=d.estrategias||'';
   document.getElementById('f_recursos').value=d.recursos||'';
   document.getElementById('f_avaliacaoAula').value=d.avaliacaoAula||'';
-  document.getElementById('aulaBadge').textContent=`Aula ${String(num).padStart(2,'0')} / ${String(currentCourse.total).padStart(2,'0')}`;
+  const badge = document.getElementById('aulaBadge');
+  badge.textContent=`Aula ${String(num).padStart(2,'0')} / ${String(currentCourse.total).padStart(2,'0')}`;
+  badge.style.display='inline-flex';
 
   // UI
   document.getElementById('mainTitle').textContent=`Aula ${String(num).padStart(2,'0')} — ${currentCourse.name}`;
@@ -1484,11 +1428,13 @@ function selectDisciplina(courseId){
   document.getElementById('fd_disciplina').value=d.disciplina||'ePol';
   document.getElementById('fd_cargaHoraria').value=d.cargaHoraria||'8 h/a';
   document.getElementById('fd_modalidade').value=d.modalidade||'Presencial';
+  document.getElementById('fd_avaliacao').value=d.avaliacao||'Prova Prática';
   document.getElementById('fd_conhecimento').value=d.conhecimento||'';
   document.getElementById('fd_habilidade').value=d.habilidade||'';
   document.getElementById('fd_atitude').value=d.atitude||'';
   document.getElementById('fd_ementa').value=d.ementa||'';
   document.getElementById('fd_objetivoGeral').value=d.objetivoGeral||'';
+  document.getElementById('fd_prerequisitos').value=d.prerequisitos||'';
   buildUnidades(currentCourse);
   for (let i = 1; i <= currentCourse.total; i++) {
     const num = String(i).padStart(2, '0');
@@ -1496,6 +1442,7 @@ function selectDisciplina(courseId){
     document.getElementById(`fd_unidade${num}_conteudo`).value = d[`unidade${num}_conteudo`] || '';
     document.getElementById(`fd_unidade${num}_metodologia`).value = d[`unidade${num}_metodologia`] || '';
   }
+  document.getElementById('fd_avaliacaoEspecial').value=d.avaliacaoEspecial||'';
   document.getElementById('fd_bibliografia').value=d.bibliografia||'';
   document.getElementById('fd_elaboradoPor').value=d.elaboradoPor||'';
   document.getElementById('fd_revisadoPor').value=d.revisadoPor||'';
@@ -1508,12 +1455,13 @@ function selectDisciplina(courseId){
   document.getElementById('btnGen').style.display='none';
   document.getElementById('btnGenAll').style.display='none';
   document.getElementById('btnGenDisc').style.display='inline-flex';
+  document.getElementById('aulaBadge').style.display='none';
   resizeAllIn(document.getElementById('disciplinaArea'));
   setDirty(false);
 }
 
-['fd_ano','fd_disciplina','fd_cargaHoraria','fd_modalidade','fd_conhecimento','fd_habilidade',
- 'fd_atitude','fd_ementa','fd_objetivoGeral','fd_bibliografia','fd_elaboradoPor','fd_revisadoPor']
+['fd_curso','fd_ano','fd_disciplina','fd_cargaHoraria','fd_modalidade','fd_avaliacao','fd_conhecimento','fd_habilidade',
+ 'fd_atitude','fd_ementa','fd_objetivoGeral','fd_prerequisitos','fd_avaliacaoEspecial','fd_bibliografia','fd_elaboradoPor','fd_revisadoPor']
   .forEach(id=>{
     const field = document.getElementById(id);
     if(field) {
@@ -1536,11 +1484,13 @@ function collectDisciplina(){
     disciplina: document.getElementById('fd_disciplina').value,
     cargaHoraria: document.getElementById('fd_cargaHoraria').value,
     modalidade: document.getElementById('fd_modalidade').value,
+    avaliacao: document.getElementById('fd_avaliacao').value,
     conhecimento: document.getElementById('fd_conhecimento').value,
     habilidade: document.getElementById('fd_habilidade').value,
     atitude: document.getElementById('fd_atitude').value,
     ementa: document.getElementById('fd_ementa').value,
     objetivoGeral: document.getElementById('fd_objetivoGeral').value,
+    prerequisitos: document.getElementById('fd_prerequisitos').value,
     ...Object.fromEntries(
       Array.from({length: currentCourse?.total || 0}, (_, i) => {
         const num = String(i + 1).padStart(2, '0');
@@ -1551,6 +1501,7 @@ function collectDisciplina(){
         ];
       }).flat()
     ),
+    avaliacaoEspecial: document.getElementById('fd_avaliacaoEspecial').value,
     bibliografia: document.getElementById('fd_bibliografia').value,
     elaboradoPor: document.getElementById('fd_elaboradoPor').value,
     revisadoPor: document.getElementById('fd_revisadoPor').value,
@@ -1831,7 +1782,7 @@ async function buildDocx(d, num, totalAulas){
       properties:{ page:{ size:{width:11906,height:16838}, margin:{top:567,bottom:567,left:567,right:567} } },
       children:[
         // ── Cabeçalho (vindo do Plano de Disciplina do curso) ──
-        ...(disciplinas[currentCourse?.id]?.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA').split('\n').map(t=>new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:0,after:0,line:240},
+        ...(disciplinas[currentCourse?.id]?.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA').split('\n').map(t=>new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:0,after:0,line:240,lineRule:'exact'},
           children:[new TextRun({ text:t, bold:true, size:22, font:'Arial' })] })),
 
         gap(4),
@@ -2055,22 +2006,24 @@ async function generateDoc(){
     // Preparar dados para geração offline
     const sections = [
       ...cabecalhoTexto.split('\n').map(text => ({ type: 'header', text })),
+      { type: 'gap' },
       { type: 'title', text: `PLANO DE AULA (${String(parseInt(currentKey.split('_')[1])).padStart(2,'0')} / ${String(currentCourse.total).padStart(2,'0')})` },
+      { type: 'gap' },
       { type: 'field', label: 'CURSO', value: d.curso },
       { type: 'field', label: 'ANO', value: d.ano },
       { type: 'field', label: 'DISCIPLINA', value: d.disciplina },
       { type: 'field', label: 'AVALIAÇÃO', value: d.avaliacao },
       { type: 'field', label: 'DURAÇÃO', value: d.duracao },
-      { type: 'header', text: 'OBJETIVOS ESPECÍFICOS' },
-      { type: 'paragraph', text: d.objetivos },
-      { type: 'header', text: 'CONTEÚDOS' },
-      { type: 'paragraph', text: d.conteudos },
-      { type: 'header', text: 'ESTRATÉGIAS DE ENSINO' },
-      { type: 'paragraph', text: d.estrategias },
-      { type: 'header', text: 'RECURSOS MATERIAIS E DIDÁTICOS' },
-      { type: 'paragraph', text: d.recursos },
-      { type: 'header', text: 'AVALIAÇÃO DA AULA' },
-      { type: 'paragraph', text: d.avaliacaoAula }
+      { type: 'gap' },
+      { type: 'section', label: 'OBJETIVOS ESPECÍFICOS', text: d.objetivos },
+      { type: 'gap' },
+      { type: 'section', label: 'CONTEÚDOS', text: d.conteudos },
+      { type: 'gap' },
+      { type: 'section', label: 'ESTRATÉGIAS DE ENSINO', text: d.estrategias },
+      { type: 'gap' },
+      { type: 'section', label: 'RECURSOS MATERIAIS E DIDÁTICOS', text: d.recursos },
+      { type: 'gap' },
+      { type: 'section', label: 'AVALIAÇÃO DA AULA', text: d.avaliacaoAula }
     ];
     
     const parts = currentKey.split('_');
@@ -2182,7 +2135,7 @@ async function buildDisciplinaDocx(d, course){
       borders:borders(greyBorder),
       margins:{top:20,bottom:20,left:120,right:120},
       children:(lines||'').split('\n').filter(line => line.trim().length > 0).map(line=>
-        new Paragraph({spacing:{line:240},children:[new TextRun({text:line.trim(),size:20,font:'Arial'})]})
+        new Paragraph({alignment:AlignmentType.BOTH,spacing:{line:240},children:[new TextRun({text:line.trim(),size:20,font:'Arial'})]})
       )
     })]});
   }
@@ -2203,7 +2156,7 @@ async function buildDisciplinaDocx(d, course){
         }),
         new TableCell({width:{size:vw,type:WidthType.DXA},
           borders:borders(greyBorder),margins:{top:15,bottom:15,left:80,right:80},
-          children:[new Paragraph({spacing:{line:240},children:[new TextRun({text:val||'',size:18,font:'Arial'})]})]
+          children:[new Paragraph({alignment:AlignmentType.BOTH,spacing:{line:240},children:[new TextRun({text:val||'',size:18,font:'Arial'})]})]
         }),
       ])})]
     });
@@ -2256,14 +2209,14 @@ async function buildDisciplinaDocx(d, course){
       shading:{fill:'D9E1F2',type:ShadingType.CLEAR},
       borders:borders(greyBorder),
       margins:{top:8,bottom:8,left:120,right:120},
-      children:[new Paragraph({spacing:{line:240},children:[new TextRun({text,bold:true,size:18,font:'Arial'})]})]
+      children:[new Paragraph({spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text,bold:true,size:18,font:'Arial'})]})]
     })]});
 
     const contentRows = (text) => {
       const lines = (text||'').split('\n').filter(l=>l.trim());
       const paragraphs = lines.length
-        ? lines.map(l=>new Paragraph({spacing:{line:240},children:[new TextRun({text:l.trim(),size:20,font:'Arial'})]}))
-        : [new Paragraph({children:[new TextRun({text:'',size:20,font:'Arial'})]})];
+        ? lines.map(l=>new Paragraph({alignment:AlignmentType.BOTH,spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:l.trim(),size:20,font:'Arial'})]}))
+        : [new Paragraph({spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:'',size:20,font:'Arial'})]})];
       return new TableRow({children:[new TableCell({
         columnSpan:2,
         borders:borders(greyBorder),
@@ -2301,10 +2254,31 @@ async function buildDisciplinaDocx(d, course){
     });
   }
 
+  function mapaCompetenciasCard(d) {
+    const subRows = (label, text) => {
+      const lines = (text||'').split('\n').filter(l=>l.trim());
+      const paras = lines.length
+        ? lines.map(l=>new Paragraph({alignment:AlignmentType.BOTH,spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:l.trim(),size:20,font:'Arial'})]}))
+        : [new Paragraph({spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:'',size:20,font:'Arial'})]})];
+      return [
+        new TableRow({children:[new TableCell({shading:{fill:'D9E1F2',type:ShadingType.CLEAR},borders:borders(greyBorder),margins:{top:8,bottom:8,left:120,right:120},
+          children:[new Paragraph({spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:label,bold:true,size:18,font:'Arial'})]})]})]
+        }),
+        new TableRow({children:[new TableCell({borders:borders(greyBorder),margins:{top:15,bottom:15,left:120,right:120},children:paras})]})
+      ];
+    };
+    return new Table({width:{size:9360,type:WidthType.DXA},rows:[
+      headRow('MAPA DE COMPETÊNCIAS'),
+      ...subRows('CONHECIMENTO',d.conhecimento),
+      ...subRows('HABILIDADE',d.habilidade),
+      ...subRows('ATITUDE',d.atitude),
+    ]});
+  }
+
   const doc2=new Document({sections:[{
     properties:{page:{size:{width:11906,height:16838},margin:{top:567,bottom:567,left:567,right:567}}},
     children:[
-      ...(d.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA').split('\n').map(t=>new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:0,line:240},
+      ...(d.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA').split('\n').map(t=>new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:0,line:240,lineRule:'exact'},
         children:[new TextRun({text:t,bold:true,size:22,font:'Arial'})]})),
 
       gap(4),
@@ -2322,18 +2296,19 @@ async function buildDisciplinaDocx(d, course){
         { label: 'CARGA-HORÁRIA:', value: d.cargaHoraria, labelWidth: 1800, valueWidth: 1300 }
       ),
       gap(2),
-      fieldTable([['MODALIDADE:',d.modalidade,1500,7860]]),
+      fieldTableWithAlignment(
+        { label: 'MODALIDADE:', value: d.modalidade, labelWidth: 1500, valueWidth: 3500 },
+        { label: 'AVALIAÇÃO:', value: d.avaliacao, labelWidth: 1500, valueWidth: 2860 }
+      ),
       gap(8),
 
-      sectionMultiline('Mapa de Competências - Conhecimento',d.conhecimento),
-      gap(2),
-      sectionMultiline('Mapa de Competências - Habilidade',d.habilidade),
-      gap(2),
-      sectionMultiline('Mapa de Competências - Atitude',d.atitude),
+      mapaCompetenciasCard(d),
       gap(4),
       sectionMultiline('Ementa',d.ementa),
       gap(4),
       sectionMultiline('Objetivo Geral',d.objetivoGeral),
+      gap(4),
+      sectionMultiline('Pré-requisitos',d.prerequisitos),
       gap(4),
       ...Array.from({length: course.total}, (_, i) => {
         const num = String(i + 1).padStart(2, '0');
@@ -2344,11 +2319,13 @@ async function buildDisciplinaDocx(d, course){
         ];
       }).flat(),
       gap(4),
+      sectionMultiline('Avaliação / Verificação Especial',d.avaliacaoEspecial),
+      gap(4),
       sectionMultiline('Referências',d.bibliografia),
       gap(2),
-      new Paragraph({spacing:{line:240},children:[new TextRun({text:d.elaboradoPor||'',size:18,font:'Arial'})]}),
+      new Paragraph({spacing:{line:240},children:[new TextRun({text:'Elaborado por: ',bold:true,size:18,font:'Arial'}),new TextRun({text:d.elaboradoPor||'',size:18,font:'Arial'})]}),
       gap(1),
-      new Paragraph({spacing:{line:240},children:[new TextRun({text:d.revisadoPor||'',size:18,font:'Arial'})]}),
+      new Paragraph({spacing:{line:240},children:[new TextRun({text:'Revisado por: ',bold:true,size:18,font:'Arial'}),new TextRun({text:d.revisadoPor||'',size:18,font:'Arial'})]}),
     ]
   }]});
 
@@ -2376,7 +2353,7 @@ PLANO DE DISCIPLINA
 
 CURSO: ${d.curso}                                                                                       ANO: ${d.ano}
 DISCIPLINA: ${d.disciplina}	        CARGA-HORÁRIA: ${d.cargaHoraria}
-MODALIDADE: ${d.modalidade}
+MODALIDADE: ${d.modalidade}	        AVALIAÇÃO: ${d.avaliacao || 'Não preenchido'}
 
 MAPA DE COMPETÊNCIAS:
 CONHECIMENTO	${d.conhecimento || 'Não preenchido'}
@@ -2387,6 +2364,8 @@ EMENTA: ${d.ementa || 'Não preenchido'}
 
 OBJETIVO GERAL: ${d.objetivoGeral || 'Não preenchido'}
 
+PRÉ-REQUISITOS: ${d.prerequisitos || 'Não preenchido'}
+
 OBJETIVOS ESPECÍFICOS:
 UNID	Ao término da unidade, o aluno deverá ser capaz de:	CONTEÚDO
 ${Array.from({length: currentCourse.total}, (_, i) => {
@@ -2394,13 +2373,17 @@ ${Array.from({length: currentCourse.total}, (_, i) => {
   return `${num}\t${(d[`unidade${num}_objetivos`] || 'Não preenchido').replace(/\n/g, '\n\t')}\t${(d[`unidade${num}_conteudo`] || 'Não preenchido').replace(/\n/g, '\n\t')}\n${d[`unidade${num}_metodologia`] || 'Não preenchido'}`;
 }).join('\n\n')}
 
+AVALIAÇÃO / VERIFICAÇÃO ESPECIAL:
+
+${d.avaliacaoEspecial || 'Não preenchido'}
+
 REFERÊNCIAS:
 
 ${d.bibliografia || 'Não preenchido'}
 
-${d.elaboradoPor || 'Elaborado por: Não preenchido'}
+Elaborado por: ${d.elaboradoPor || 'Não preenchido'}
 
-${d.revisadoPor || 'Revisado por: Não preenchido'}
+Revisado por: ${d.revisadoPor || 'Não preenchido'}
 
 ${d.metodologia || 'Não preenchido'}
 
@@ -2464,35 +2447,41 @@ async function generateDisciplinaDoc(){
     // Preparar dados para geração offline
     const sections = [
       ...(d.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA').split('\n').map(text => ({ type: 'header', text })),
+      { type: 'gap' },
       { type: 'title', text: 'PLANO DE DISCIPLINA' },
+      { type: 'gap' },
       { type: 'field', label: 'CURSO', value: d.curso },
       { type: 'field', label: 'ANO', value: d.ano },
       { type: 'field', label: 'DISCIPLINA', value: d.disciplina },
       { type: 'field', label: 'CARGA-HORÁRIA', value: d.cargaHoraria },
       { type: 'field', label: 'MODALIDADE', value: d.modalidade },
-      { type: 'header', text: 'MAPA DE COMPETÊNCIAS' },
-      { type: 'field', label: 'CONHECIMENTO', value: d.conhecimento },
-      { type: 'field', label: 'HABILIDADE', value: d.habilidade },
-      { type: 'field', label: 'ATITUDE', value: d.atitude },
-      { type: 'header', text: 'EMENTA' },
-      { type: 'paragraph', text: d.ementa },
-      { type: 'header', text: 'OBJETIVO GERAL' },
-      { type: 'paragraph', text: d.objetivoGeral },
+      { type: 'field', label: 'AVALIAÇÃO', value: d.avaliacao },
+      { type: 'gap' },
+      { type: 'mapa_competencias', conhecimento: d.conhecimento, habilidade: d.habilidade, atitude: d.atitude },
+      { type: 'gap' },
+      { type: 'section', label: 'EMENTA', text: d.ementa },
+      { type: 'gap' },
+      { type: 'section', label: 'OBJETIVO GERAL', text: d.objetivoGeral },
+      { type: 'gap' },
+      { type: 'section', label: 'PRÉ-REQUISITOS', text: d.prerequisitos },
+      { type: 'gap' },
       ...Array.from({length: currentCourse.total}, (_, i) => {
         const num = String(i + 1).padStart(2, '0');
-        return [{
-          type: 'unidade_card',
-          num,
-          totalStr: String(currentCourse.total).padStart(2, '0'),
-          objetivos:   d[`unidade${num}_objetivos`],
-          conteudo:    d[`unidade${num}_conteudo`],
-          metodologia: d[`unidade${num}_metodologia`],
-        }];
+        return [
+          { type: 'unidade_card', num, totalStr: String(currentCourse.total).padStart(2, '0'),
+            objetivos: d[`unidade${num}_objetivos`], conteudo: d[`unidade${num}_conteudo`],
+            metodologia: d[`unidade${num}_metodologia`] },
+          { type: 'gap' },
+        ];
       }).flat(),
+      { type: 'header', text: 'AVALIAÇÃO / VERIFICAÇÃO ESPECIAL' },
+      { type: 'paragraph', text: d.avaliacaoEspecial },
+      { type: 'gap' },
       { type: 'header', text: 'REFERÊNCIAS' },
       { type: 'paragraph', text: d.bibliografia },
-      { type: 'paragraph', text: d.elaboradoPor },
-      { type: 'paragraph', text: d.revisadoPor }
+      { type: 'gap' },
+      { type: 'field', label: 'Elaborado por', value: d.elaboradoPor || '' },
+      { type: 'field', label: 'Revisado por', value: d.revisadoPor || '' }
     ];
     
     const filename = `Plano_de_Disciplina_${currentCourse.id}.docx`;
@@ -2532,38 +2521,22 @@ async function importBackup(file) {
   try {
     const text = await file.text();
     const backup = JSON.parse(text);
-    
-    if (backup.version && backup.version.includes('IndexedDB')) {
-      // Backup moderno do IndexedDB
-      const success = await planosDB.restoreBackup(backup);
-      if (success) {
-        // Recarregar dados na memória
-        data = await planosDB.loadAllPlanos();
-        disciplinas = await planosDB.loadAllDisciplinas();
-        
-        buildSidebar();
-        toast('Backup importado com sucesso!');
-        return true;
-      }
-    } else {
-      // Backup antigo do localStorage
-      if (backup.data) {
-        for (const [key, value] of Object.entries(backup.data)) {
-          data[key] = value;
-          await planosDB.savePlano(key, value);
-        }
-      }
-      
-      if (backup.disciplinas) {
-        for (const [key, value] of Object.entries(backup.disciplinas)) {
-          disciplinas[key] = value;
-          await planosDB.saveDisciplina(key, value);
-        }
-      }
-      
+
+    if (!backup.data && !backup.disciplinas) {
+      toast('Erro ao importar: arquivo não contém dados válidos');
+      return false;
+    }
+
+    const success = await planosDB.restoreBackup(backup);
+    if (success) {
+      data = await planosDB.loadAllPlanos();
+      disciplinas = await planosDB.loadAllDisciplinas();
       buildSidebar();
-      toast('Backup importado e migrado para IndexedDB!');
+      toast('Backup importado com sucesso!');
       return true;
+    } else {
+      toast('Erro ao importar backup');
+      return false;
     }
   } catch (e) {
     console.error('Erro ao importar backup:', e);
@@ -2609,7 +2582,7 @@ function addImportButton() {
 
     document.getElementById('cg_agente')?.classList.add('open');
 
-    console.log('✅ Sistema inicializado com SQLite');
+    console.log('✅ Sistema inicializado (localStorage)');
 
     const stats = await planosDB.createBackup();
     const planosCount = Object.keys(stats.data || {}).length;
