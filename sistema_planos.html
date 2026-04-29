@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Planos de Aula · Academia Nacional de Polícia</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- sql.js: SQLite compilado para WebAssembly -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
 <!-- Bibliotecas para geração de documentos -->
 <script>
 // FileSaver.js v2.0.5 - inline para funcionamento offline
@@ -12,34 +14,42 @@
 
 // Implementação simplificada de geração de .docx usando apenas HTML/CSS/JavaScript
 window.DocxGenerator = {
-  create: function(sections) {
-    // Gerar XML do documento Word com imagem
-    const xml = this.generateDocumentXml(sections, true);
+  create: function(sections, customImageData = null) {
+    // Decidir qual imagem usar: customizada ou brasão padrão
+    const useCustomImage = !!customImageData;
+    
+    // Gerar XML do documento Word com imagem apropriada
+    const xml = this.generateDocumentXml(sections, !useCustomImage, useCustomImage ? customImageData : null);
     
     // Criar arquivo ZIP com a estrutura do .docx
-    return this.createDocxBlob(xml);
+    return this.createDocxBlob(xml, customImageData);
   },
   
-  generateDocumentXml: function(sections, includeImage = true) {
+  generateDocumentXml: function(sections, includeImage = true, customHeaderImage = null) {
     let content = '';
     
+    // Adicionar imagem customizada do cabeçalho se fornecida
+    if (customHeaderImage) {
+      content += this.generateCustomImageXml('header_custom');
+    }
+    
     // Adicionar brasão da República no topo se solicitado
-    if (includeImage) {
+    if (includeImage && !customHeaderImage) {
       content += this.generateImageXml();
     }
     
     sections.forEach(section => {
       if (section.type === 'title') {
-        content += `<w:p><w:pPr><w:jc w:val="center"/><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>${this.escapeXml(section.text)}</w:t></w:r></w:p>`;
+        content += `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:line="240" w:lineRule="exact"/><w:rPr><w:b/><w:sz w:val="28"/></w:rPr></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="28"/></w:rPr><w:t>${this.escapeXml(section.text)}</w:t></w:r></w:p>`;
       } else if (section.type === 'header') {
-        content += `<w:p><w:pPr><w:rPr><w:b/><w:sz w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="22"/></w:rPr><w:t>${this.escapeXml(section.text)}</w:t></w:r></w:p>`;
+        content += `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:line="240" w:lineRule="exact"/><w:rPr><w:b/><w:sz w:val="22"/></w:rPr></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="22"/></w:rPr><w:t>${this.escapeXml(section.text)}</w:t></w:r></w:p>`;
       } else if (section.type === 'paragraph') {
         const lines = section.text.split('\n');
         lines.forEach(line => {
-          content += `<w:p><w:r><w:t>${this.escapeXml(line)}</w:t></w:r></w:p>`;
+          content += `<w:p><w:pPr><w:spacing w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t>${this.escapeXml(line)}</w:t></w:r></w:p>`;
         });
       } else if (section.type === 'field') {
-        content += `<w:p><w:r><w:rPr><w:b/></w:rPr><w:t>${this.escapeXml(section.label)}: </w:t></w:r><w:r><w:t>${this.escapeXml(section.value || '')}</w:t></w:r></w:p>`;
+        content += `<w:p><w:pPr><w:spacing w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/></w:rPr><w:t>${this.escapeXml(section.label)}: </w:t></w:r><w:r><w:t>${this.escapeXml(section.value || '')}</w:t></w:r></w:p>`;
       } else if (section.type === 'image') {
         content += this.generateImageXml(section.id || 'image1');
       }
@@ -49,18 +59,76 @@ window.DocxGenerator = {
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture">
   <w:body>
     ${content}
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="567" w:right="567" w:bottom="567" w:left="567" w:header="708" w:footer="708" w:gutter="0"/>
+    </w:sectPr>
   </w:body>
 </w:document>`;
   },
   
   generateImageXml: function(imageId = 'brasao') {
-    return `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="914400" cy="914400"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="1" name="${imageId}"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="${imageId}.png"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId2" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="914400" cy="914400"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+    const imageSize = 914400; // Tamanho em EMUs para a imagem original
+    return `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${imageSize}" cy="${imageSize}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="1" name="${imageId}" descr="Brasão da República"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="1" name="${imageId}.webp" descr="Brasão da República do Brasil"/><pic:cNvPicPr><a:picLocks noChangeAspect="1" noChangeArrowheads="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId2" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" cstate="print"><a:extLst><a:ext uri="{28A0092B-C50C-407E-A947-70E740481C1C}"/></a:extLst></a:blip><a:srcRect/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="${imageSize}" cy="${imageSize}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+  },
+  
+  generateCustomImageXml: function(imageId) {
+    const imageSize = 914400; // Tamanho em EMUs para a imagem
+    return `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0"><wp:extent cx="${imageSize}" cy="${imageSize}"/><wp:effectExtent l="0" t="0" r="0" b="0"/><wp:docPr id="2" name="${imageId}" descr="Imagem do Cabeçalho"/><wp:cNvGraphicFramePr><a:graphicFrameLocks xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" noChangeAspect="1"/></wp:cNvGraphicFramePr><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="2" name="${imageId}.jpg" descr="Imagem Customizada do Cabeçalho"/><pic:cNvPicPr><a:picLocks noChangeAspect="1" noChangeArrowheads="1"/></pic:cNvPicPr></pic:nvPicPr><pic:blipFill><a:blip r:embed="rId3" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" cstate="print"><a:extLst><a:ext uri="{28A0092B-C50C-407E-A947-70E740481C1C}"/></a:extLst></a:blip><a:srcRect/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr bwMode="auto"><a:xfrm><a:off x="0" y="0"/><a:ext cx="${imageSize}" cy="${imageSize}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
   },
   
   getBrasaoBase64: function() {
-    // Brasão da República em base64 (imagem PNG minimalista)
-    // Esta é uma imagem 64x64 do brasão simplificado em verde/amarelo
-    return 'iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAACXBIWXMAAAsTAAALEwEAmpwYAAAFJElEQVR4nO2be0gUQRzHf3p6nhaGj1QKMyssK8qiB2FvH4RFUWFkRQ+Kgiyi6EH0oCii6EH0oCii6EFZ9KAoyh5ERQ+Knh5GRZFFURU9jB5GRQ+jB9HDqOhBRFE/+A0Mw+7s7t7e3u3tXn8wH3Z2dmZ+35+ZPZ+ZBRAhQoQIESJEiBAhQoQIESJEiBAhQgQ/AJANoAOAOwA4Q9wWADAAYAsAVQBkA7ADQA8AxQAUAXA6wg8ADwAFAOwEIA+AUgD2A3AKgLsA9IJF1A3AXQAeAfAIgOcANAHQAkAbAO0AdADQCkADAK8AeArAEwAeA9AJwF0AusDi6AKgE4B3ATjKHH5OT88AeAPAGwBe65t8RJEGwEEA6gCoAeANAL2yRw8A7wGoNGEcDsAhAJoBaAXgAwDfAOgD4DcAfwH4A8AfAD4C8AmAzwB8AeArAN8A+A7ADwB+AvALgN8A/ALgJwA/APgOwDcAvgLwBYDPAHwC4CMAHwB4D8A7AN4C8AaAVwC8BOAFAFcB6AWLONvFHvG/Syx+/8SHl4/fL5a1+8PD7xPLRsCX8PTh8/N43T6AYfFflDyafPy7ZO0+A1+I12PJA6DDwrfs4zPI4ZOPr4OHX+TfIo8WH7+XrN1XoG6fJA8fnz8PVr8OH9/H02PJI8DHl8/DD5TPz7/bKJ8/a/cZqNsnyaOzFGjKx/cx5fP4dfjy8XWK8vnzN8rnz9p9Bur2SfLw8flzk/LteXz7+Pp+/vz5dQz5/Bvk8+fPT9buM1C3T5KHz5cfPw8fn1/H18frHeXz522Uz5+/fP78fGTtPgN1+yR5dJYCTfn4Pqb8PL78PkJ8/nz8vGTtPgN1+yR5+Pj8ufN1/fr4+vh4+fVzlM+PVz7/flm7z0DdPkke/vfP4+Pz7+fx8+vjx8uvz8/Pr7+PrN1noG6fJA8fn2/fLJ8/Hj5efv387PL58/OVtfsM1O2T5OHj8+fOr+vXx9fHx8uvn6N8frzy+ffL2n0G6vZJ8vC/fx4fn38/j59fHz8+vn6O8vnx8fPvl7X7DNTt04OPJL4Onz4+Hj5efvz6+Hh56+fXm+TzY+Xj59cvn78enl4OPE9XZO0+A3X7JPkOxN8/j49Pf8+Pn18fPz6+fny8/e/3ySfKx8fG18/Pz8/Dg89H1u4zULdPko+Pzy+fy58/Pz6+z8+vj4+Pt35+H38uX7+s3Wegbp8kDx+fP3d+Xb8+vj4+Xn79HOXz45XPv1/W7jNQt0+Sh//98/j4/Pt5/Pz6+PHx9XOUz4+Pn3+/rN1noG6fJA8fn2/fLJ8/Hj5efv38bPP58/OVtfsM1O2T5OHj8+fOr+vXx9fHx8uvn6N8frzy+ffL2n0G6vZJ8vC/fx4fn38/j59fHz8+vn6O8vnx8fPvl7X7DNTtk0+8AUANAIf5OXKP8+cRPlb+t8nD1/HxzpFf4c+LN8nnx8/Pz8+e1zsOfO8cn19f1u4zULdPgqeLPJ4PvPmTy8+fb958n/z2/fz8FLN2X4G6fZI8fHx+nj4+/3zP1+fXlbX7DNTtk+Th4/Pnzq/r18fXx8fLr5+jfH688vn3y9p9Bur2SfLwv38eH59/P4+fXx8/Pr5+jvL58fHz75e1+wzU7ZPk4ePz7fPzl8/Lz1c+f3z8+nn58u3J2n0G6vZJ8vDx+fPh1/Xr4+vj4+XXz1E+P175/Ptl7T4DdfskefjfP4+Pz7+fx8+vjx8fXz9H+fz4+Pn3y9p9Bur2SfJA/fLx8+HX9evj6+Pj5dfPUT4/Xvn8+2XtPgN1+yR59g7gH6N/gXSdK19nAAAAAElFTkSuQmCC';
+    // Brasão da República - imagem WebP oficial do projeto (brasao.jpeg convertida automaticamente)
+    return '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';
   },
   
   escapeXml: function(text) {
@@ -72,18 +140,33 @@ window.DocxGenerator = {
       .replace(/'/g, '&apos;');
   },
   
-  createDocxBlob: function(documentXml) {
+  createDocxBlob: function(documentXml, customImageData = null) {
     // Criar imagem do brasão
     const brasaoData = this.base64ToUint8Array(this.getBrasaoBase64());
+    
+    // Definir relacionamentos base
+    let relationships = '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/brasao.webp"/>';
+    let contentTypes = '<Default Extension="webp" ContentType="image/webp"/>';
+    
+    // Adicionar imagem customizada se fornecida
+    if (customImageData) {
+      relationships += '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/header_custom.jpg"/>';
+      contentTypes += '<Default Extension="jpg" ContentType="image/jpeg"/>';
+    }
     
     // Criar estrutura completa de um arquivo .docx com imagem
     const files = {
       '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>',
-      'word/_rels/document.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/brasao.png"/></Relationships>',
+      'word/_rels/document.xml.rels': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${relationships}</Relationships>`,
       'word/document.xml': documentXml,
-      'word/media/brasao.png': brasaoData,
-      '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="png" ContentType="image/png"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'
+      'word/media/brasao.webp': brasaoData,
+      '[Content_Types].xml': `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>${contentTypes}<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`
     };
+    
+    // Adicionar imagem customizada aos arquivos se fornecida
+    if (customImageData) {
+      files['word/media/header_custom.jpg'] = customImageData;
+    }
     
     // Usar JSZip simplificado ou fallback para texto se não disponível
     try {
@@ -110,7 +193,8 @@ window.DocxGenerator = {
     
     // Adicionar cada arquivo
     for (const [filename, content] of Object.entries(files)) {
-      const data = new TextEncoder().encode(content);
+      // Tratar dados binários (Uint8Array) e texto diferentemente
+      const data = content instanceof Uint8Array ? content : new TextEncoder().encode(content);
       
       // Local file header
       const localHeader = new ArrayBuffer(30 + filename.length);
@@ -518,6 +602,25 @@ textarea.tall{min-height:170px}
     <div class="editor-wrap">
       <div class="editor-grid">
 
+        <div class="field-group full">
+          <label>Cabeçalho Institucional</label>
+          <div style="display: flex; gap: 10px; align-items: flex-start;">
+            <div style="flex: 1;">
+              <textarea id="fd_cabecalho" rows="3" placeholder="SERVIÇO PÚBLICO FEDERAL&#10;MJ - DEPARTAMENTO DE POLÍCIA FEDERAL&#10;DIREN - ACADEMIA NACIONAL DE POLÍCIA">SERVIÇO PÚBLICO FEDERAL
+MJ - DEPARTAMENTO DE POLÍCIA FEDERAL
+DIREN - ACADEMIA NACIONAL DE POLÍCIA</textarea>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
+              <input type="file" id="fd_cabecalho_image" accept="image/*" style="display: none;" onchange="handleHeaderImageUpload(event, 'fd')">
+              <button type="button" onclick="document.getElementById('fd_cabecalho_image').click()" style="padding: 5px 10px; font-size: 12px; background: #0066cc; color: white; border: none; border-radius: 3px; cursor: pointer;">📷 Imagem</button>
+              <div id="fd_cabecalho_image_preview" style="max-width: 80px; max-height: 60px; border: 1px solid #ddd; border-radius: 3px; overflow: hidden; display: none;">
+                <img id="fd_cabecalho_image_img" style="width: 100%; height: 100%; object-fit: contain;" alt="Preview">
+              </div>
+              <button type="button" id="fd_cabecalho_image_remove" onclick="removeHeaderImage('fd')" style="padding: 2px 6px; font-size: 10px; background: #dc3545; color: white; border: none; border-radius: 2px; cursor: pointer; display: none;">🗑️</button>
+            </div>
+          </div>
+        </div>
+
         <div class="field-group">
           <label>Curso</label>
           <input type="text" id="fd_curso" readonly>
@@ -662,6 +765,8 @@ const COURSES = [
 ];
 
 const DEFAULT_LESSON = (course, num = 1) => ({
+  cabecalho: 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA',
+  cabecalhoImage: null,
   curso: 'CFP 2026 - EPF',
   ano: '2026',
   disciplina: `ePol - ${course.name}`,
@@ -675,6 +780,8 @@ const DEFAULT_LESSON = (course, num = 1) => ({
 });
 
 const DEFAULT_DISCIPLINA = (course) => ({
+  cabecalho: 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA',
+  cabecalhoImage: null,
   curso: 'CFP 2026 - APF',
   ano: '2026',
   disciplina: 'ePol',
@@ -760,51 +867,262 @@ let dirty = false;
 
 function key(courseId, num){ return `${courseId}_${num}`; }
 
-function initData(){
+// ══════════════════════════════════════════════════════
+// BANCO DE DADOS LOCAL - SQLite via WebAssembly (sql.js)
+// O banco SQLite é persistido no IndexedDB como blob binário
+// ══════════════════════════════════════════════════════
+
+class PlanosDB {
+  constructor() {
+    this.SQL = null;
+    this.db = null;
+    this.idbName = 'PlanosAulaSQLite';
+  }
+
+  async _idbPersist() {
+    const data = this.db.export();
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(this.idbName, 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore('sqlite', { keyPath: 'id' });
+      req.onsuccess = e => {
+        const idb = e.target.result;
+        const tx = idb.transaction(['sqlite'], 'readwrite');
+        tx.objectStore('sqlite').put({ id: 'main', data });
+        tx.oncomplete = () => { idb.close(); resolve(); };
+        tx.onerror = () => reject(tx.error);
+      };
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  async _idbLoad() {
+    return new Promise(resolve => {
+      const req = indexedDB.open(this.idbName, 1);
+      req.onupgradeneeded = e => e.target.result.createObjectStore('sqlite', { keyPath: 'id' });
+      req.onsuccess = e => {
+        const idb = e.target.result;
+        const tx = idb.transaction(['sqlite'], 'readonly');
+        const get = tx.objectStore('sqlite').get('main');
+        get.onsuccess = () => { idb.close(); resolve(get.result ? get.result.data : null); };
+        get.onerror = () => { idb.close(); resolve(null); };
+      };
+      req.onerror = () => resolve(null);
+    });
+  }
+
+  async init() {
+    this.SQL = await initSqlJs({
+      locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+    });
+
+    const saved = await this._idbLoad();
+    this.db = saved ? new this.SQL.Database(saved) : new this.SQL.Database();
+
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS planos (
+        id TEXT PRIMARY KEY,
+        course_id TEXT,
+        lesson_number INTEGER,
+        data TEXT,
+        last_modified TEXT
+      );
+      CREATE TABLE IF NOT EXISTS disciplinas (
+        id TEXT PRIMARY KEY,
+        data TEXT,
+        last_modified TEXT
+      );
+      CREATE TABLE IF NOT EXISTS config_store (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+    `);
+    await this._idbPersist();
+  }
+
+  async savePlano(id, plano) {
+    const courseId = id.split('_')[0];
+    const lessonNumber = parseInt(id.split('_')[1]) || 0;
+    this.db.run(
+      'INSERT OR REPLACE INTO planos (id, course_id, lesson_number, data, last_modified) VALUES (?,?,?,?,?)',
+      [id, courseId, lessonNumber, JSON.stringify(plano), new Date().toISOString()]
+    );
+    await this._idbPersist();
+  }
+
+  async loadPlano(id) {
+    const r = this.db.exec('SELECT data FROM planos WHERE id = ?', [id]);
+    return (r.length && r[0].values.length) ? JSON.parse(r[0].values[0][0]) : null;
+  }
+
+  async loadAllPlanos() {
+    const r = this.db.exec('SELECT id, data FROM planos');
+    const out = {};
+    if (r.length) r[0].values.forEach(([id, json]) => { out[id] = JSON.parse(json); });
+    return out;
+  }
+
+  async saveAllPlanos(planosObj) {
+    this.db.run('BEGIN TRANSACTION');
+    for (const [id, plano] of Object.entries(planosObj)) {
+      const courseId = id.split('_')[0];
+      const lessonNumber = parseInt(id.split('_')[1]) || 0;
+      this.db.run(
+        'INSERT OR REPLACE INTO planos (id, course_id, lesson_number, data, last_modified) VALUES (?,?,?,?,?)',
+        [id, courseId, lessonNumber, JSON.stringify(plano), new Date().toISOString()]
+      );
+    }
+    this.db.run('COMMIT');
+    await this._idbPersist();
+  }
+
+  async saveDisciplina(id, disciplina) {
+    this.db.run(
+      'INSERT OR REPLACE INTO disciplinas (id, data, last_modified) VALUES (?,?,?)',
+      [id, JSON.stringify(disciplina), new Date().toISOString()]
+    );
+    await this._idbPersist();
+  }
+
+  async loadDisciplina(id) {
+    const r = this.db.exec('SELECT data FROM disciplinas WHERE id = ?', [id]);
+    return (r.length && r[0].values.length) ? JSON.parse(r[0].values[0][0]) : null;
+  }
+
+  async loadAllDisciplinas() {
+    const r = this.db.exec('SELECT id, data FROM disciplinas');
+    const out = {};
+    if (r.length) r[0].values.forEach(([id, json]) => { out[id] = JSON.parse(json); });
+    return out;
+  }
+
+  async saveAllDisciplinas(disciplinasObj) {
+    this.db.run('BEGIN TRANSACTION');
+    for (const [id, disc] of Object.entries(disciplinasObj)) {
+      this.db.run(
+        'INSERT OR REPLACE INTO disciplinas (id, data, last_modified) VALUES (?,?,?)',
+        [id, JSON.stringify(disc), new Date().toISOString()]
+      );
+    }
+    this.db.run('COMMIT');
+    await this._idbPersist();
+  }
+
+  async setConfig(key, value) {
+    this.db.run(
+      'INSERT OR REPLACE INTO config_store (key, value) VALUES (?,?)',
+      [key, JSON.stringify(value)]
+    );
+    await this._idbPersist();
+  }
+
+  async getConfig(key) {
+    const r = this.db.exec('SELECT value FROM config_store WHERE key = ?', [key]);
+    return (r.length && r[0].values.length) ? JSON.parse(r[0].values[0][0]) : null;
+  }
+
+  async migrateFromLocalStorage() {
+    try {
+      const savedPlanos = localStorage.getItem('dpf_planos_v2');
+      if (savedPlanos) {
+        await this.saveAllPlanos(JSON.parse(savedPlanos));
+        console.log('✅ Planos de aula migrados para SQLite');
+      }
+      const savedDisciplinas = localStorage.getItem('dpf_disciplinas_v1');
+      if (savedDisciplinas) {
+        await this.saveAllDisciplinas(JSON.parse(savedDisciplinas));
+        console.log('✅ Disciplinas migradas para SQLite');
+      }
+      await this.setConfig('migration_completed', true);
+      localStorage.removeItem('dpf_planos_v2');
+      localStorage.removeItem('dpf_disciplinas_v1');
+    } catch (error) {
+      console.error('Erro na migração:', error);
+      throw error;
+    }
+  }
+
+  async createBackup() {
+    const planos = await this.loadAllPlanos();
+    const disciplinas = await this.loadAllDisciplinas();
+    return {
+      timestamp: new Date().toISOString(),
+      version: 'SQLite_v1',
+      data: planos,
+      disciplinas
+    };
+  }
+
+  async restoreBackup(backup) {
+    try {
+      if (backup.data) await this.saveAllPlanos(backup.data);
+      if (backup.disciplinas) await this.saveAllDisciplinas(backup.disciplinas);
+      return true;
+    } catch (error) {
+      console.error('Erro ao restaurar backup:', error);
+      return false;
+    }
+  }
+
+  exportSQLiteFile() {
+    const data = this.db.export();
+    const blob = new Blob([data], { type: 'application/octet-stream' });
+    saveAs(blob, 'planos_aula.sqlite');
+  }
+}
+
+// Instância global do banco
+const planosDB = new PlanosDB();
+
+async function initData() {
   try {
-    const saved = localStorage.getItem('dpf_planos_v2');
-    if(saved){ 
-      try{ 
-        data = JSON.parse(saved); 
-      } catch(e){ 
-        console.error('Erro ao carregar dados salvos:', e);
-        data = {}; 
-      } 
+    await planosDB.init();
+
+    const migrated = await planosDB.getConfig('migration_completed');
+    if (!migrated) {
+      await planosDB.migrateFromLocalStorage();
     }
-    for(const [k,v] of Object.entries(SEED)){
-      if(!data[k]) data[k] = {...v};
+
+    data = await planosDB.loadAllPlanos();
+    disciplinas = await planosDB.loadAllDisciplinas();
+
+    const newPlanos = {};
+    for (const [k, v] of Object.entries(SEED)) {
+      if (!data[k]) {
+        newPlanos[k] = { ...v };
+        data[k] = newPlanos[k];
+      }
     }
-    const savedDisc = localStorage.getItem('dpf_disciplinas_v1');
-    if(savedDisc){ 
-      try{ 
-        disciplinas = JSON.parse(savedDisc); 
-      } catch(e){ 
-        console.error('Erro ao carregar disciplinas salvas:', e);
-        disciplinas = {}; 
-      } 
+    if (Object.keys(newPlanos).length) {
+      await planosDB.saveAllPlanos(newPlanos);
     }
-  } catch(e) {
-    console.error('Erro ao inicializar dados:', e);
+
+    console.log('✅ Banco de dados SQLite inicializado');
+  } catch (e) {
+    console.error('Erro ao inicializar banco de dados:', e);
+    toast('Erro crítico: não foi possível inicializar o banco de dados SQLite.');
     data = {};
     disciplinas = {};
+    for (const [k, v] of Object.entries(SEED)) {
+      if (!data[k]) data[k] = { ...v };
+    }
   }
 }
 
-function saveAll(){
+async function saveAll() {
   try {
-    localStorage.setItem('dpf_planos_v2', JSON.stringify(data));
-  } catch(e) {
+    await planosDB.saveAllPlanos(data);
+  } catch (e) {
     console.error('Erro ao salvar dados:', e);
-    toast('Erro ao salvar: espaço de armazenamento insuficiente');
+    toast('Erro ao salvar dados no banco de dados.');
   }
 }
 
-function saveDisciplinas(){
+async function saveDisciplinas() {
   try {
-    localStorage.setItem('dpf_disciplinas_v1', JSON.stringify(disciplinas));
-  } catch(e) {
+    await planosDB.saveAllDisciplinas(disciplinas);
+  } catch (e) {
     console.error('Erro ao salvar disciplinas:', e);
-    toast('Erro ao salvar: espaço de armazenamento insuficiente');
+    toast('Erro ao salvar disciplinas no banco de dados.');
   }
 }
 
@@ -904,9 +1222,11 @@ function selectLesson(courseId, num){
 
   // Load data
   const d=data[currentKey]||DEFAULT_LESSON(currentCourse, num);
+  
   document.getElementById('f_curso').value=d.curso||'CFP 2026 - EPF';
   document.getElementById('f_ano').value=d.ano||'2026';
-  document.getElementById('f_disciplina').value=d.disciplina||`ePol - ${currentCourse.name}`;
+  const discNome = disciplinas[currentCourse.id]?.disciplina;
+  document.getElementById('f_disciplina').value = discNome || d.disciplina || `ePol - ${currentCourse.name}`;
   document.getElementById('f_avaliacao').value=d.avaliacao||'Prova Prática';
   document.getElementById('f_duracao').value=d.duracao||'2h/a';
   document.getElementById('f_objetivos').value=d.objetivos||'';
@@ -966,6 +1286,99 @@ function collectLesson(){
     avaliacaoAula:document.getElementById('f_avaliacaoAula').value,
   };
 }
+
+// ══════════════════════════════════════════════════════
+// HEADER IMAGE FUNCTIONS
+// ══════════════════════════════════════════════════════
+
+function handleHeaderImageUpload(event, type) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  // Validar tipo de arquivo
+  if (!file.type.startsWith('image/')) {
+    toast('Erro: selecione apenas arquivos de imagem');
+    return;
+  }
+  
+  // Validar tamanho (máx 5MB)
+  if (file.size > 5 * 1024 * 1024) {
+    toast('Erro: imagem muito grande. Máximo 5MB');
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const base64 = e.target.result;
+    
+    // Criar uma nova imagem para redimensionar se necessário
+    const img = new Image();
+    img.onload = function() {
+      let canvas = document.createElement('canvas');
+      let ctx = canvas.getContext('2d');
+      
+      // Redimensionar se muito grande (máx 300px de largura)
+      let width = img.width;
+      let height = img.height;
+      
+      if (width > 300) {
+        height = (height * 300) / width;
+        width = 300;
+      }
+      
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const resizedBase64 = canvas.toDataURL('image/jpeg', 0.8);
+      
+      // Salvar na variável global apropriada
+      if (type === 'f') {
+        window.currentLessonHeaderImage = resizedBase64;
+      } else {
+        window.currentDisciplineHeaderImage = resizedBase64;
+      }
+      
+      // Atualizar preview
+      const preview = document.getElementById(`${type}_cabecalho_image_preview`);
+      const imgElement = document.getElementById(`${type}_cabecalho_image_img`);
+      const removeBtn = document.getElementById(`${type}_cabecalho_image_remove`);
+      
+      imgElement.src = resizedBase64;
+      preview.style.display = 'block';
+      removeBtn.style.display = 'block';
+      
+      dirty = true;
+      toast('Imagem carregada com sucesso');
+    };
+    img.src = base64;
+  };
+  
+  reader.readAsDataURL(file);
+}
+
+function removeHeaderImage(type) {
+  // Limpar variável global
+  if (type === 'f') {
+    window.currentLessonHeaderImage = null;
+  } else {
+    window.currentDisciplineHeaderImage = null;
+  }
+  
+  // Limpar input
+  document.getElementById(`${type}_cabecalho_image`).value = '';
+  
+  // Esconder preview
+  document.getElementById(`${type}_cabecalho_image_preview`).style.display = 'none';
+  document.getElementById(`${type}_cabecalho_image_remove`).style.display = 'none';
+  
+  dirty = true;
+  toast('Imagem removida');
+}
+
+// ══════════════════════════════════════════════════════
+// LESSON FUNCTIONS
+// ══════════════════════════════════════════════════════
 
 function saveLesson(silent=false){
   if(!currentKey) {
@@ -1028,6 +1441,23 @@ function selectDisciplina(courseId){
   document.getElementById(`di_${courseId}`)?.classList.add('active');
 
   const d=disciplinas[courseId]||DEFAULT_DISCIPLINA(currentCourse);
+  
+  // Restore header image
+  window.currentDisciplineHeaderImage = d.cabecalhoImage || null;
+  if (d.cabecalhoImage) {
+    const preview = document.getElementById('fd_cabecalho_image_preview');
+    const img = document.getElementById('fd_cabecalho_image_img');
+    const removeBtn = document.getElementById('fd_cabecalho_image_remove');
+    
+    img.src = d.cabecalhoImage;
+    preview.style.display = 'block';
+    removeBtn.style.display = 'block';
+  } else {
+    document.getElementById('fd_cabecalho_image_preview').style.display = 'none';
+    document.getElementById('fd_cabecalho_image_remove').style.display = 'none';
+  }
+  
+  document.getElementById('fd_cabecalho').value=d.cabecalho||'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA';
   document.getElementById('fd_curso').value=d.curso||'CFP 2026 - APF';
   document.getElementById('fd_ano').value=d.ano||'2026';
   document.getElementById('fd_disciplina').value=d.disciplina||'ePol';
@@ -1085,6 +1515,8 @@ function selectDisciplina(courseId){
 
 function collectDisciplina(){
   return {
+    cabecalho: document.getElementById('fd_cabecalho').value,
+    cabecalhoImage: window.currentDisciplineHeaderImage || null,
     curso: document.getElementById('fd_curso').value,
     ano: document.getElementById('fd_ano').value,
     disciplina: document.getElementById('fd_disciplina').value,
@@ -1182,13 +1614,9 @@ function showToast(msg, duration) {
 }
 
 // Função para backup de dados
-function backupData() {
+async function backupData() {
   try {
-    const backup = {
-      timestamp: new Date().toISOString(),
-      data: data,
-      disciplinas: disciplinas
-    };
+    const backup = await planosDB.createBackup();
     
     const blob = new Blob([JSON.stringify(backup, null, 2)], 
       {type: 'application/json'});
@@ -1198,7 +1626,25 @@ function backupData() {
     toast('Backup criado com sucesso!');
   } catch(e) {
     console.error('Erro ao criar backup:', e);
-    toast('Erro ao criar backup');
+    
+    // Fallback para backup do localStorage/memória
+    try {
+      const backup = {
+        timestamp: new Date().toISOString(),
+        version: 'fallback',
+        data: data,
+        disciplinas: disciplinas
+      };
+      
+      const blob = new Blob([JSON.stringify(backup, null, 2)], 
+        {type: 'application/json'});
+      const filename = `backup_planos_aula_${new Date().toISOString().slice(0,10)}.json`;
+      
+      saveAs(blob, filename);
+      toast('Backup criado com sucesso (modo compatibilidade)!');
+    } catch(ex) {
+      toast('Erro ao criar backup');
+    }
   }
 }
 
@@ -1255,7 +1701,7 @@ async function buildDocx(d, num, totalAulas){
       new TableCell({
         shading:{ fill:navy, type:ShadingType.CLEAR },
         borders:borders(navyBorder),
-        margins:{top:80,bottom:80,left:120,right:120},
+        margins:{top:20,bottom:20,left:120,right:120},
         children:[new Paragraph({
           alignment:AlignmentType.CENTER,
           children:[new TextRun({ text, bold:true, color:'FFFFFF', size:22, font:'Arial' })]
@@ -1268,7 +1714,7 @@ async function buildDocx(d, num, totalAulas){
     return new TableRow({ children:[
       new TableCell({
         borders:borders(greyBorder),
-        margins:{top:80,bottom:80,left:120,right:120},
+        margins:{top:20,bottom:20,left:120,right:120},
         children:[new Paragraph({ children:[
           new TextRun({ text, size:20, font:'Arial' })
         ]})]
@@ -1285,16 +1731,53 @@ async function buildDocx(d, num, totalAulas){
           width:{size:lw,type:WidthType.DXA},
           shading:{fill:'D9E1F2',type:ShadingType.CLEAR},
           borders:borders(greyBorder),
-          margins:{top:60,bottom:60,left:80,right:80},
-          children:[new Paragraph({ children:[new TextRun({ text:lbl, bold:true, size:18, font:'Arial' })] })]
+          margins:{top:15,bottom:15,left:80,right:80},
+          children:[new Paragraph({ spacing:{line:240}, children:[new TextRun({ text:lbl, bold:true, size:18, font:'Arial' })] })]
         }),
         new TableCell({
           width:{size:vw,type:WidthType.DXA},
           borders:borders(greyBorder),
-          margins:{top:60,bottom:60,left:80,right:80},
-          children:[new Paragraph({ children:[new TextRun({ text:val||'', size:18, font:'Arial' })] })]
+          margins:{top:15,bottom:15,left:80,right:80},
+          children:[new Paragraph({ spacing:{line:240}, children:[new TextRun({ text:val||'', size:18, font:'Arial' })] })]
         }),
       ])})]
+    });
+  }
+
+  // Função para criar tabela com alinhamentos customizados
+  function fieldTableWithAlignment(leftField, rightField){
+    return new Table({
+      width:{size:9360,type:WidthType.DXA},
+      borders:{ insideH:{ style:BorderStyle.NONE }, insideV:{ style:BorderStyle.NONE } },
+      rows:[new TableRow({ children: [
+        // Célula da esquerda (label + valor)
+        new TableCell({
+          width:{size:leftField.labelWidth + leftField.valueWidth,type:WidthType.DXA},
+          borders:borders(greyBorder),
+          margins:{top:15,bottom:15,left:80,right:80},
+          children:[new Paragraph({ 
+            children:[
+              new TextRun({ text:leftField.label, bold:true, size:18, font:'Arial' }),
+              new TextRun({ text:' ', size:18 }),
+              new TextRun({ text:leftField.value||'', size:18, font:'Arial' })
+            ] 
+          })]
+        }),
+        // Célula da direita (label + valor alinhado à direita)
+        new TableCell({
+          width:{size:rightField.labelWidth + rightField.valueWidth,type:WidthType.DXA},
+          borders:borders(greyBorder),
+          margins:{top:15,bottom:15,left:80,right:80},
+          children:[new Paragraph({ 
+            alignment:AlignmentType.RIGHT,
+            children:[
+              new TextRun({ text:rightField.label, bold:true, size:18, font:'Arial' }),
+              new TextRun({ text:' ', size:18 }),
+              new TextRun({ text:rightField.value||'', size:18, font:'Arial' })
+            ] 
+          })]
+        }),
+      ]})]
     });
   }
 
@@ -1306,16 +1789,16 @@ async function buildDocx(d, num, totalAulas){
   }
 
   function gap(size=6){
-    return new Paragraph({ spacing:{before:size*10,after:size*10} });
+    return new Paragraph({ spacing:{before:0,after:0,line:240} });
   }
 
   function multilineBodyRow(lines){
     return new TableRow({ children:[
       new TableCell({
         borders:borders(greyBorder),
-        margins:{top:80,bottom:80,left:120,right:120},
+        margins:{top:20,bottom:20,left:120,right:120},
         children: (lines || '').split('\n').filter(line => line.trim().length > 0).map(line=>
-          new Paragraph({ children:[new TextRun({ text:line.trim(), size:20, font:'Arial' })] })
+          new Paragraph({ spacing:{line:240}, children:[new TextRun({ text:line.trim(), size:20, font:'Arial' })] })
         )
       })
     ]});
@@ -1333,36 +1816,32 @@ async function buildDocx(d, num, totalAulas){
 
   const doc2 = new Document({
     sections:[{
-      properties:{ page:{ size:{width:11906,height:16838}, margin:{top:1134,bottom:1134,left:1701,right:1134} } },
+      properties:{ page:{ size:{width:11906,height:16838}, margin:{top:567,bottom:567,left:567,right:567} } },
       children:[
-        // ── Cabeçalho ──
-        ...[
-          'SERVIÇO PÚBLICO FEDERAL',
-          'MJ - DEPARTAMENTO DE POLÍCIA FEDERAL',
-          'DIREN - ACADEMIA NACIONAL DE POLÍCIA',
-        ].map(t=>new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:0,after:40},
+        // ── Cabeçalho (vindo do Plano de Disciplina do curso) ──
+        ...(disciplinas[currentCourse?.id]?.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA').split('\n').map(t=>new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:0,after:0,line:240},
           children:[new TextRun({ text:t, bold:true, size:22, font:'Arial' })] })),
 
         gap(4),
 
-        new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:0,after:100},
+        new Paragraph({ alignment:AlignmentType.CENTER, spacing:{before:5,after:5,line:240},
           children:[
             new TextRun({ text:`PLANO DE AULA  (${numStr} / ${totalStr})`, bold:true, size:28, font:'Arial' })
           ]
         }),
 
         // ── Linha 1: CURSO / ANO ──
-        fieldTable([
-          ['CURSO:', d.curso, 1200, 6360],
-          ['ANO:',  d.ano,   800,  1000],
-        ]),
+        fieldTableWithAlignment(
+          { label: 'CURSO:', value: d.curso, labelWidth: 1200, valueWidth: 4000 },
+          { label: 'ANO:', value: d.ano, labelWidth: 800, valueWidth: 1000 }
+        ),
         gap(2),
 
         // ── Linha 2: DISCIPLINA / AVALIAÇÃO ──
-        fieldTable([
-          ['DISCIPLINA:', d.disciplina, 1500, 5200],
-          ['AVALIAÇÃO:',  d.avaliacao,  1200, 1460],
-        ]),
+        fieldTableWithAlignment(
+          { label: 'DISCIPLINA:', value: d.disciplina, labelWidth: 1500, valueWidth: 3500 },
+          { label: 'AVALIAÇÃO:', value: d.avaliacao, labelWidth: 1200, valueWidth: 1460 }
+        ),
         gap(2),
 
         // ── Linha 3: DURAÇÃO ──
@@ -1378,13 +1857,13 @@ async function buildDocx(d, num, totalAulas){
             headRow('Objetivos Específicos'),
             new TableRow({ children:[new TableCell({
               borders:borders(greyBorder),
-              margins:{top:80,bottom:80,left:120,right:120},
+              margins:{top:20,bottom:20,left:120,right:120},
               children:[
-                new Paragraph({ children:[
+                new Paragraph({ spacing:{line:240}, children:[
                   new TextRun({ text:'Ao final da aula, os alunos deverão ser capazes de:', bold:true, size:20, font:'Arial' })
                 ]}),
                 ...((d.objetivos||'').split('\n').filter(line => line.trim()).map(line=>
-                  new Paragraph({ children:[new TextRun({ text:line.trim(), size:20, font:'Arial' })] })
+                  new Paragraph({ spacing:{line:240}, children:[new TextRun({ text:line.trim(), size:20, font:'Arial' })] })
                 ))
               ]
             })]})
@@ -1427,9 +1906,9 @@ function canGenerateDocx() {
 }
 
 // Função para gerar documento usando implementação offline
-function generateOfflineDocx(sections, filename) {
+function generateOfflineDocx(sections, filename, customImageData = null) {
   try {
-    const blob = DocxGenerator.create(sections);
+    const blob = DocxGenerator.create(sections, customImageData);
     
     // Verificar se realmente é um .docx (não fallback de texto)
     const isRealDocx = blob.type.includes('wordprocessingml') || blob.size > 1000;
@@ -1478,10 +1957,8 @@ PLANO DE AULA (${numStr} / ${totalStr})
 
 ${'='.repeat(60)}
 
-CURSO: ${d.curso}
-ANO: ${d.ano}
-DISCIPLINA: ${d.disciplina}
-AVALIAÇÃO: ${d.avaliacao}
+CURSO: ${d.curso}                                                                                       ANO: ${d.ano}
+DISCIPLINA: ${d.disciplina}                                                          AVALIAÇÃO: ${d.avaliacao}
 DURAÇÃO: ${d.duracao}
 
 ${'='.repeat(60)}
@@ -1554,11 +2031,18 @@ async function generateDoc(){
   if(!canGenerateDocx()) {
     toast('Gerando documento .docx offline...');
     
+    // Preparar imagem e cabeçalho do Plano de Disciplina do curso
+    const discData = disciplinas[currentCourse.id] || {};
+    let customImageData = null;
+    if (discData.cabecalhoImage) {
+      const base64Data = discData.cabecalhoImage.split(',')[1];
+      customImageData = DocxGenerator.base64ToUint8Array(base64Data);
+    }
+    const cabecalhoTexto = discData.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA';
+
     // Preparar dados para geração offline
     const sections = [
-      { type: 'header', text: 'SERVIÇO PÚBLICO FEDERAL' },
-      { type: 'header', text: 'MJ - DEPARTAMENTO DE POLÍCIA FEDERAL' },
-      { type: 'header', text: 'DIREN - ACADEMIA NACIONAL DE POLÍCIA' },
+      ...cabecalhoTexto.split('\n').map(text => ({ type: 'header', text })),
       { type: 'title', text: `PLANO DE AULA (${String(parseInt(currentKey.split('_')[1])).padStart(2,'0')} / ${String(currentCourse.total).padStart(2,'0')})` },
       { type: 'field', label: 'CURSO', value: d.curso },
       { type: 'field', label: 'ANO', value: d.ano },
@@ -1581,7 +2065,7 @@ async function generateDoc(){
     const num = parseInt(parts[parts.length-1]);
     const filename = `Plano_de_Aula_${currentCourse.id}_${String(num).padStart(2,'0')}.docx`;
     
-    const result = generateOfflineDocx(sections, filename);
+    const result = generateOfflineDocx(sections, filename, customImageData);
     if(result.success) {
       if(result.isDocx) {
         toast('Download de arquivo .docx iniciado!');
@@ -1675,7 +2159,7 @@ async function buildDisciplinaDocx(d, course){
     return new TableRow({children:[new TableCell({
       shading:{fill:navy,type:ShadingType.CLEAR},
       borders:borders(navyBorder),
-      margins:{top:80,bottom:80,left:120,right:120},
+      margins:{top:20,bottom:20,left:120,right:120},
       children:[new Paragraph({alignment:AlignmentType.CENTER,
         children:[new TextRun({text,bold:true,color:'FFFFFF',size:22,font:'Arial'})]})]
     })]});
@@ -1684,9 +2168,9 @@ async function buildDisciplinaDocx(d, course){
   function multilineBodyRow(lines){
     return new TableRow({children:[new TableCell({
       borders:borders(greyBorder),
-      margins:{top:80,bottom:80,left:120,right:120},
+      margins:{top:20,bottom:20,left:120,right:120},
       children:(lines||'').split('\n').filter(line => line.trim().length > 0).map(line=>
-        new Paragraph({children:[new TextRun({text:line.trim(),size:20,font:'Arial'})]})
+        new Paragraph({spacing:{line:240},children:[new TextRun({text:line.trim(),size:20,font:'Arial'})]})
       )
     })]});
   }
@@ -1702,42 +2186,78 @@ async function buildDisciplinaDocx(d, course){
       borders:{insideH:{style:BorderStyle.NONE},insideV:{style:BorderStyle.NONE}},
       rows:[new TableRow({children:pairs.flatMap(([lbl,val,lw,vw])=>[
         new TableCell({width:{size:lw,type:WidthType.DXA},shading:{fill:'D9E1F2',type:ShadingType.CLEAR},
-          borders:borders(greyBorder),margins:{top:60,bottom:60,left:80,right:80},
-          children:[new Paragraph({children:[new TextRun({text:lbl,bold:true,size:18,font:'Arial'})]})]
+          borders:borders(greyBorder),margins:{top:15,bottom:15,left:80,right:80},
+          children:[new Paragraph({spacing:{line:240},children:[new TextRun({text:lbl,bold:true,size:18,font:'Arial'})]})]
         }),
         new TableCell({width:{size:vw,type:WidthType.DXA},
-          borders:borders(greyBorder),margins:{top:60,bottom:60,left:80,right:80},
-          children:[new Paragraph({children:[new TextRun({text:val||'',size:18,font:'Arial'})]})]
+          borders:borders(greyBorder),margins:{top:15,bottom:15,left:80,right:80},
+          children:[new Paragraph({spacing:{line:240},children:[new TextRun({text:val||'',size:18,font:'Arial'})]})]
         }),
       ])})]
     });
   }
 
+  // Função para criar tabela com alinhamentos customizados (disciplina)
+  function fieldTableWithAlignment(leftField, rightField){
+    return new Table({
+      width:{size:9360,type:WidthType.DXA},
+      borders:{insideH:{style:BorderStyle.NONE},insideV:{style:BorderStyle.NONE}},
+      rows:[new TableRow({children:[
+        // Célula da esquerda (label + valor)
+        new TableCell({
+          width:{size:leftField.labelWidth + leftField.valueWidth,type:WidthType.DXA},
+          borders:borders(greyBorder),
+          margins:{top:15,bottom:15,left:80,right:80},
+          children:[new Paragraph({
+            children:[
+              new TextRun({text:leftField.label,bold:true,size:18,font:'Arial'}),
+              new TextRun({text:' ',size:18}),
+              new TextRun({text:leftField.value||'',size:18,font:'Arial'})
+            ]
+          })]
+        }),
+        // Célula da direita (label + valor alinhado à direita)  
+        new TableCell({
+          width:{size:rightField.labelWidth + rightField.valueWidth,type:WidthType.DXA},
+          borders:borders(greyBorder),
+          margins:{top:15,bottom:15,left:80,right:80},
+          children:[new Paragraph({
+            alignment:AlignmentType.RIGHT,
+            children:[
+              new TextRun({text:rightField.label,bold:true,size:18,font:'Arial'}),
+              new TextRun({text:' ',size:18}),
+              new TextRun({text:rightField.value||'',size:18,font:'Arial'})
+            ]
+          })]
+        }),
+      ]})]
+    });
+  }
+
   function gap(size=6){
-    return new Paragraph({spacing:{before:size*10,after:size*10}});
+    return new Paragraph({spacing:{before:0,after:0,line:240}});
   }
 
   const doc2=new Document({sections:[{
-    properties:{page:{size:{width:11906,height:16838},margin:{top:1134,bottom:1134,left:1701,right:1134}}},
+    properties:{page:{size:{width:11906,height:16838},margin:{top:567,bottom:567,left:567,right:567}}},
     children:[
-      ...[
-        'SERVIÇO PÚBLICO FEDERAL',
-        'MJSP - POLÍCIA FEDERAL',
-        'SERVIÇO DE PLANEJAMENTO E AVALIAÇÃO - SAVAL/CGDHO/DIREN-ANP/PF',
-      ].map(t=>new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:40},
+      ...(d.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA').split('\n').map(t=>new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:0,line:240},
         children:[new TextRun({text:t,bold:true,size:22,font:'Arial'})]})),
 
       gap(4),
 
-      new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:0,after:100},
+      new Paragraph({alignment:AlignmentType.CENTER,spacing:{before:5,after:5,line:240},
         children:[new TextRun({text:'PLANO DE DISCIPLINA',bold:true,size:28,font:'Arial'})]}),
 
-      fieldTable([['CURSO:',d.curso,1200,6360],['ANO:',d.ano,800,1000]]),
+      fieldTableWithAlignment(
+        { label: 'CURSO:', value: d.curso, labelWidth: 1200, valueWidth: 4000 },
+        { label: 'ANO:', value: d.ano, labelWidth: 800, valueWidth: 1000 }
+      ),
       gap(2),
-      fieldTable([
-        ['DISCIPLINA:',d.disciplina,1500,4760],
-        ['CARGA-HORÁRIA:',d.cargaHoraria,1800,1300],
-      ]),
+      fieldTableWithAlignment(
+        { label: 'DISCIPLINA:', value: d.disciplina, labelWidth: 1500, valueWidth: 3500 },
+        { label: 'CARGA-HORÁRIA:', value: d.cargaHoraria, labelWidth: 1800, valueWidth: 1300 }
+      ),
       gap(2),
       fieldTable([['MODALIDADE:',d.modalidade,1500,7860]]),
       gap(8),
@@ -1778,9 +2298,9 @@ async function buildDisciplinaDocx(d, course){
       gap(4),
       sectionMultiline('Referências',d.bibliografia),
       gap(2),
-      new Paragraph({children:[new TextRun({text:d.elaboradoPor||'',size:18,font:'Arial'})]}),
+      new Paragraph({spacing:{line:240},children:[new TextRun({text:d.elaboradoPor||'',size:18,font:'Arial'})]}),
       gap(1),
-      new Paragraph({children:[new TextRun({text:d.revisadoPor||'',size:18,font:'Arial'})]}),
+      new Paragraph({spacing:{line:240},children:[new TextRun({text:d.revisadoPor||'',size:18,font:'Arial'})]}),
     ]
   }]});
 
@@ -1801,8 +2321,8 @@ function generateDisciplinaTextDoc() {
   
   const textContent = `
 SERVIÇO PÚBLICO FEDERAL
-MJSP - POLÍCIA FEDERAL
-SERVIÇO DE PLANEJAMENTO E AVALIAÇÃO - SAVAL/CGDHO/DIREN-ANP/PF
+MJ - DEPARTAMENTO DE POLÍCIA FEDERAL
+DIREN - ACADEMIA NACIONAL DE POLÍCIA
 
 PLANO DE DISCIPLINA
 
@@ -1892,11 +2412,17 @@ async function generateDisciplinaDoc(){
   if(!canGenerateDocx()) {
     toast('Gerando documento .docx offline...');
     
+    // Preparar imagem customizada se existe
+    let customImageData = null;
+    if (d.cabecalhoImage) {
+      // Converter base64 para Uint8Array
+      const base64Data = d.cabecalhoImage.split(',')[1]; // Remove data:image/jpeg;base64,
+      customImageData = DocxGenerator.base64ToUint8Array(base64Data);
+    }
+    
     // Preparar dados para geração offline
     const sections = [
-      { type: 'header', text: 'SERVIÇO PÚBLICO FEDERAL' },
-      { type: 'header', text: 'MJSP - POLÍCIA FEDERAL' },
-      { type: 'header', text: 'SERVIÇO DE PLANEJAMENTO E AVALIAÇÃO - SAVAL/CGDHO/DIREN-ANP/PF' },
+      ...(d.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA').split('\n').map(text => ({ type: 'header', text })),
       { type: 'title', text: 'PLANO DE DISCIPLINA' },
       { type: 'field', label: 'CURSO', value: d.curso },
       { type: 'field', label: 'ANO', value: d.ano },
@@ -1935,7 +2461,7 @@ async function generateDisciplinaDoc(){
     
     const filename = `Plano_de_Disciplina_${currentCourse.id}.docx`;
     
-    const result = generateOfflineDocx(sections, filename);
+    const result = generateOfflineDocx(sections, filename, customImageData);
     if(result.success) {
       if(result.isDocx) {
         toast('Download de arquivo .docx iniciado!');
@@ -1964,8 +2490,104 @@ async function generateDisciplinaDoc(){
 // ══════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════
-initData();
-buildSidebar();
+
+// Função para importar backup
+async function importBackup(file) {
+  try {
+    const text = await file.text();
+    const backup = JSON.parse(text);
+    
+    if (backup.version && backup.version.includes('IndexedDB')) {
+      // Backup moderno do IndexedDB
+      const success = await planosDB.restoreBackup(backup);
+      if (success) {
+        // Recarregar dados na memória
+        data = await planosDB.loadAllPlanos();
+        disciplinas = await planosDB.loadAllDisciplinas();
+        
+        buildSidebar();
+        toast('Backup importado com sucesso!');
+        return true;
+      }
+    } else {
+      // Backup antigo do localStorage
+      if (backup.data) {
+        for (const [key, value] of Object.entries(backup.data)) {
+          data[key] = value;
+          await planosDB.savePlano(key, value);
+        }
+      }
+      
+      if (backup.disciplinas) {
+        for (const [key, value] of Object.entries(backup.disciplinas)) {
+          disciplinas[key] = value;
+          await planosDB.saveDisciplina(key, value);
+        }
+      }
+      
+      buildSidebar();
+      toast('Backup importado e migrado para IndexedDB!');
+      return true;
+    }
+  } catch (e) {
+    console.error('Erro ao importar backup:', e);
+    toast('Erro ao importar backup: formato inválido');
+    return false;
+  }
+}
+
+// Função para adicionar botão de importar backup
+function addImportButton() {
+  const backupButton = document.querySelector('[onclick="backupData()"]');
+  if (backupButton && !document.getElementById('importButton')) {
+    const importInput = document.createElement('input');
+    importInput.type = 'file';
+    importInput.accept = '.json';
+    importInput.style.display = 'none';
+    importInput.id = 'importInput';
+    importInput.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        await importBackup(file);
+      }
+    };
+    
+    const importButton = document.createElement('button');
+    importButton.className = 'btn btn-ghost btn-sm';
+    importButton.innerHTML = '📂 Importar';
+    importButton.title = 'Importar backup de dados';
+    importButton.id = 'importButton';
+    importButton.onclick = () => importInput.click();
+    
+    backupButton.parentNode.appendChild(importInput);
+    backupButton.parentNode.appendChild(importButton);
+  }
+}
+
+// Inicialização assíncrona
+(async function init() {
+  try {
+    await initData();
+    buildSidebar();
+    addImportButton();
+    
+    console.log('✅ Sistema inicializado com IndexedDB');
+    
+    // Verificar estatísticas do banco
+    const stats = await planosDB.createBackup();
+    const planosCount = Object.keys(stats.data || {}).length;
+    const disciplinasCount = Object.keys(stats.disciplinas || {}).length;
+    
+    console.log(`📊 Dados carregados: ${planosCount} planos, ${disciplinasCount} disciplinas`);
+    
+  } catch (error) {
+    console.error('❌ Erro na inicialização:', error);
+    toast('Aviso: Sistema iniciado em modo de compatibilidade');
+    
+    // Fallback para inicialização simples
+    buildSidebar();
+  }
+})();
 
 // Auto-open Agente
 document.getElementById('cg_agente').classList.add('open');
