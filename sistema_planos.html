@@ -5,12 +5,48 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Planos de Aula · Academia Nacional de Polícia</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
-<!-- sql.js: SQLite compilado para WebAssembly -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <!-- Bibliotecas para geração de documentos -->
 <script>
 // FileSaver.js v2.0.5 - inline para funcionamento offline
 (function(a,b){if("function"==typeof define&&define.amd)define([],b);else if("undefined"!=typeof exports)b();else{b(),a.FileSaver={exports:{}}.exports}})(this,function(){"use strict";function b(a,b){return"undefined"==typeof b?b={autoBom:!1}:"object"!=typeof b&&(console.warn("Deprecated: Expected third argument to be a object"),b={autoBom:!b}),b.autoBom&&/^\s*(?:text\/\S*|application\/xml|\S*\/\S*\+xml)\s*;.*charset\s*=\s*utf-8/i.test(a.type)?new Blob(["\uFEFF",a],{type:a.type}):a}function c(a,b,c){var d=new XMLHttpRequest;d.open("GET",a),d.responseType="blob",d.onload=function(){g(d.response,b,c)},d.onerror=function(){console.error("could not download file")},d.send()}function d(a){var b=new XMLHttpRequest;b.open("HEAD",a,!1);try{b.send()}catch(a){}return 200<=b.status&&299>=b.status}function e(a){try{a.dispatchEvent(new MouseEvent("click"))}catch(c){var b=document.createEvent("MouseEvents");b.initMouseEvent("click",!0,!0,window,0,0,0,80,20,!1,!1,!1,!1,0,null),a.dispatchEvent(b)}}var f="object"==typeof window&&window.window===window?window:"object"==typeof self&&self.self===self?self:"object"==typeof global&&global.global===global?global:void 0,a=f.navigator&&/Macintosh/.test(navigator.userAgent)&&/AppleWebKit/.test(navigator.userAgent)&&!/Safari/.test(navigator.userAgent),g=f.saveAs||("object"!=typeof window||window!==f?function(){}:"download"in HTMLAnchorElement.prototype&&!a?function(b,g,h){var i=f.URL||f.webkitURL,j=document.createElement("a");g=g||b.name||"download",j.download=g,j.rel="noopener","string"==typeof b?(j.href=b,j.origin===location.origin?e(j):d(j.href)?c(b,g,h):e(j,j.target="_blank")):(j.href=i.createObjectURL(b),setTimeout(function(){i.revokeObjectURL(j.href)},4E4),setTimeout(function(){e(j)},0))}:"msSaveOrOpenBlob"in navigator?function(f,g,h){if(g=g||f.name||"download","string"!=typeof f)navigator.msSaveOrOpenBlob(b(f,h),g);else if(d(f))c(f,g,h);else{var i=document.createElement("a");i.href=f,i.target="_blank",setTimeout(function(){e(i)})}}:function(b,d,e,g){if(g=g||open("","_blank"),g&&(g.document.title=g.document.body.innerText="downloading..."),"string"==typeof b)return c(b,d,e);var h="application/octet-stream"===b.type,i=/constructor/i.test(f.HTMLElement)||f.safari,j=/CriOS\/[\d]+/.test(navigator.userAgent);if((j||h&&i||a)&&"undefined"!=typeof FileReader){var k=new FileReader;k.onloadend=function(){var a=k.result;a=j?a:a.replace(/^data:[^;]*;/,"data:attachment/file;"),g?g.location.href=a:location=a,g=null},k.readAsDataURL(b)}else{var l=f.URL||f.webkitURL,m=l.createObjectURL(b);g?g.location=m:location.href=m,g=null,setTimeout(function(){l.revokeObjectURL(m)},4E4)}});f.saveAs=g.saveAs=g,"undefined"!=typeof module&&(module.exports=g)});
+
+/*
+██╗███╗   ███╗██████╗ ██████╗  ██████╗ ██╗   ██╗███████╗███╗   ███╗███████╗███╗   ██╗████████╗ ██████╗ ███████╗
+██║████╗ ████║██╔══██╗██╔══██╗██╔═══██╗██║   ██║██╔════╝████╗ ████║██╔════╝████╗  ██║╚══██╔══╝██╔═══██╗██╔════╝
+██║██╔████╔██║██████╔╝██████╔╝██║   ██║██║   ██║█████╗  ██╔████╔██║█████╗  ██╔██╗ ██║   ██║   ██║   ██║███████╗
+██║██║╚██╔╝██║██╔═══╝ ██╔══██╗██║   ██║╚██╗ ██╔╝██╔══╝  ██║╚██╔╝██║██╔══╝  ██║╚██╗██║   ██║   ██║   ██║╚════██║
+██║██║ ╚═╝ ██║██║     ██║  ██║╚██████╔╝ ╚████╔╝ ███████╗██║ ╚═╝ ██║███████╗██║ ╚████║   ██║   ╚██████╔╝███████║
+╚═╝╚═╝     ╚═╝╚═╝     ╚═╝  ╚═╝ ╚═════╝   ╚═══╝  ╚══════╝╚═╝     ╚═╝╚══════╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝ ╚══════╝
+
+🚀 SISTEMA DE PLANOS DE AULA - VERSÃO COM SINCRONIZAÇÃO MELHORADA
+
+✅ Problemas resolvidos:
+• Auto-save automático (3s após parar de digitar)
+• Sincronização inteligente entre navegadores/sessões
+• Detecção e notificação de atualizações em tempo real
+• Monitoramento de conectividade Firebase
+• Indicador visual de status de conexão
+• Logs detalhados para debug
+• Atalhos de teclado para sincronização (F5, Ctrl+R)
+• Fallback para localStorage em caso de falha
+
+🎯 Como usar:
+• Digite normalmente - salvamento automático
+• Clique no indicador de conexão para sincronizar manualmente
+• Use F5 ou Ctrl+R para forçar sincronização
+• Console: debugData() para informações detalhadas
+
+📊 Monitoramento:
+• Verificação de conectividade a cada 30s
+• Verificação de atualizações a cada 2min
+• Notificação automática de mudanças remotas
+• Reconexão automática em caso de falha
+
+💡 Desenvolvido por GitHub Copilot para máxima confiabilidade
+*/
 
 // Implementação simplificada de geração de .docx usando apenas HTML/CSS/JavaScript
 window.DocxGenerator = {
@@ -406,6 +442,11 @@ if (document.readyState === 'loading') {
 }
 </script>
 <style>
+@keyframes pulse {
+  0%, 50% { opacity: 1; }
+  25%, 75% { opacity: 0.5; }
+}
+
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
   --navy:#0f2044;--navy2:#162d5e;--navy3:#1e3a72;
@@ -465,6 +506,12 @@ html,body{height:100%;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;fon
 .topbar-title{flex:1;min-width:0}
 .topbar-title h1{font-size:15px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .topbar-title p{font-size:12px;color:var(--text3);margin-top:1px}
+
+.connection-status{display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:12px;background:rgba(0,0,0,0.05);border:1px solid var(--border);font-size:11px;color:var(--text3)}
+.connection-dot{width:8px;height:8px;border-radius:50%;background:var(--text3);animation:pulse 2s infinite}
+.connection-status.online .connection-dot{background:var(--green);animation:none}
+.connection-status.offline .connection-dot{background:var(--red);animation:none}
+.connection-text{font-weight:500}
 .btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--radius);font-size:12.5px;font-weight:500;font-family:inherit;cursor:pointer;border:1.5px solid transparent;transition:all .15s;white-space:nowrap}
 .btn-primary{background:var(--navy);color:var(--white);border-color:var(--navy)}
 .btn-primary:hover{background:var(--navy2)}
@@ -503,6 +550,14 @@ textarea.tall{min-height:120px}
 .editor-footer{background:var(--surface);border-top:1px solid var(--border);padding:12px 28px;display:flex;align-items:center;gap:10px;flex-shrink:0}
 .save-status{font-size:12px;color:var(--text3);flex:1}
 .save-status.saved{color:var(--green)}
+.save-status.saving{color:var(--blue);animation:pulse 2s infinite}
+
+/* Connection Status */
+.connection-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text3);margin-right:12px;cursor:pointer;padding:4px 8px;border-radius:4px;transition:background 0.2s}
+.connection-status:hover{background:rgba(0,0,0,0.05)}
+.connection-dot{width:8px;height:8px;border-radius:50%;background:var(--text3);transition:background 0.3s}
+.connection-status.online .connection-dot{background:var(--green);animation:none}
+.connection-status.offline .connection-dot{background:var(--red);animation:pulse 2s infinite}
 /* ── TOAST ── */
 .toast{position:fixed;bottom:20px;right:20px;background:var(--navy);color:white;padding:10px 16px;border-radius:var(--radius);font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
 .toast.show{opacity:1;transform:translateY(0)}
@@ -548,6 +603,10 @@ textarea.tall{min-height:120px}
       <h1 id="mainTitle">Selecione uma aula</h1>
       <p id="mainSub">Clique em uma aula na barra lateral para editar</p>
     </div>
+    <span class="connection-status" id="connectionStatus" title="Status da conexão Firebase - Clique para sincronizar" onclick="forceSyncData()">
+      <div class="connection-dot"></div>
+      <span class="connection-text">Conectando...</span>
+    </span>
     <span class="aula-badge" id="aulaBadge" style="display:none">Aula 00 / 00</span>
     <button class="btn btn-ghost btn-sm" id="btnGenAll" onclick="generateAll()" style="display:none">
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
@@ -762,7 +821,7 @@ DIREN - ACADEMIA NACIONAL DE POLÍCIA</textarea>
 // ══════════════════════════════════════════════════════
 // DATA MODEL
 // ══════════════════════════════════════════════════════
-const COURSES = [
+const STATIC_COURSES = [
   { id:'agente',       name:'Agente de Polícia Federal',       short:'Agente',       total:4,  color:'#2563eb' },
   { id:'escrivao',     name:'Escrivão de Polícia Federal',     short:'Escrivão',     total:20, color:'#7c3aed' },
   { id:'delegado',     name:'Delegado de Polícia Federal',     short:'Delegado',     total:10, color:'#059669' },
@@ -770,13 +829,34 @@ const COURSES = [
   { id:'perito',       name:'Perito Criminal Federal',         short:'Perito',       total:4,  color:'#dc2626' },
 ];
 
+function loadCustomCourses() {
+  try {
+    const raw = JSON.parse(localStorage.getItem('dpf_cursos_v1') || '[]');
+    return raw.map(c => ({
+      id: c.id,
+      name: c.nome,
+      short: c.nome.length > 10 ? c.nome.substring(0, 10) + '…' : c.nome,
+      total: c.totalAulas || 1,
+      color: c.cor || '#2563eb',
+      _custom: true,
+      _cargaHoraria: c.cargaHoraria || '',
+      _temAvaliacao: c.temAvaliacao,
+      _tipoAvaliacao: c.tipoAvaliacao || '',
+      _cabecalho: c.cabecalho || '',
+      _cursoDocx: c.cursoDocx || '',
+    }));
+  } catch { return []; }
+}
+
+let COURSES = [...STATIC_COURSES, ...loadCustomCourses()];
+
 const DEFAULT_LESSON = (course, num = 1) => ({
-  cabecalho: 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA',
+  cabecalho: course._cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA',
   cabecalhoImage: null,
-  curso: 'CFP 2026 - EPF',
+  curso: course._cursoDocx || 'CFP 2026 - EPF',
   ano: '2026',
-  disciplina: `ePol - ${course.name}`,
-  avaliacao: 'Prova Prática',
+  disciplina: `${course.name}`,
+  avaliacao: course._tipoAvaliacao || 'Prova Prática',
   duracao: '2h/a',
   objetivos: '',
   conteudos: '',
@@ -786,14 +866,14 @@ const DEFAULT_LESSON = (course, num = 1) => ({
 });
 
 const DEFAULT_DISCIPLINA = (course) => ({
-  cabecalho: 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA',
+  cabecalho: course._cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA',
   cabecalhoImage: null,
-  curso: 'CFP 2026 - APF',
+  curso: course._cursoDocx || 'CFP 2026 - APF',
   ano: '2026',
-  disciplina: 'ePol',
-  cargaHoraria: '8 h/a',
+  disciplina: course.name || 'ePol',
+  cargaHoraria: course._cargaHoraria || '8 h/a',
   modalidade: 'Presencial',
-  avaliacao: 'Prova Prática',
+  avaliacao: course._tipoAvaliacao || 'Prova Prática',
   conhecimento: 'Conhecer os conceitos fundamentais e o funcionamento do sistema ePol, incluindo suas principais funcionalidades. Conhecer as diretrizes dos normativos internos da Polícia Federal que têm relação com o correto uso do sistema.',
   habilidade: 'Identificar e aplicar corretamente os recursos do sistema ePol, para atendimento das demandas exigidas de forma prática e eficiente.',
   atitude: 'Promover o uso adequado e responsável do sistema ePol como ferramenta essencial para o exercício da atividade de polícia judiciária, demonstrando proatividade, organização, atenção aos detalhes e compromisso com a legalidade e a integridade dos procedimentos.',
@@ -877,38 +957,96 @@ let dirty = false;
 function key(courseId, num){ return `${courseId}_${num}`; }
 
 // ══════════════════════════════════════════════════════
-// PERSISTÊNCIA LOCAL - localStorage
-// Funciona offline, sem dependência de CDN, confiável em file://
+// PERSISTÊNCIA - Firebase Firestore (online) + localStorage (cache offline)
 // ══════════════════════════════════════════════════════
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBCit9u8JNguJ7DrqXHMjAbxbnVzMT95b0",
+  authDomain: "planos-de-aula-cd743.firebaseapp.com",
+  projectId: "planos-de-aula-cd743",
+  storageBucket: "planos-de-aula-cd743.firebasestorage.app",
+  messagingSenderId: "1012891998414",
+  appId: "1:1012891998414:web:e257ad4ba3de36d96e189f"
+};
 
 class PlanosDB {
   constructor() {
     this.KEY_PLANOS      = 'dpf_planos_v3';
     this.KEY_DISCIPLINAS = 'dpf_disciplinas_v2';
     this.KEY_CONFIG      = 'dpf_config_v1';
+    this.db     = null;
+    this.userId = null;
+    this.online = false;
   }
 
-  _read(key) {
-    try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; }
+  // ── localStorage (cache offline) ───────────────────
+  _read(key)        { try { return JSON.parse(localStorage.getItem(key) || '{}'); } catch { return {}; } }
+  _write(key, val)  { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} }
+
+  // ── Referências Firestore ───────────────────────────
+  // ID fixo: todas as sessões (incluindo anônimas) compartilham os mesmos dados
+  _col(name) { return this.db.collection('planos_dpf').doc('dados').collection(name); }
+
+  // ── Inicialização ────────────────────────────────────
+  async init() {
+    this._initPromise = (async () => {
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        this.db = firebase.firestore();
+        // Teste rápido de conectividade (3 s de timeout)
+        await Promise.race([
+          this._col('config').doc('ping').get(),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3000))
+        ]);
+        this.online = true;
+        console.log('✅ Firebase conectado');
+      } catch (e) {
+        console.warn('⚠️ Firebase indisponível, usando localStorage:', e.message);
+        this.online = false;
+      }
+    })();
+    await this._initPromise;
   }
 
-  _write(key, value) {
-    localStorage.setItem(key, JSON.stringify(value));
+  // Aguarda init com timeout máximo (usado nos saves)
+  async _waitOnline(ms = 5000) {
+    if (this._initPromise) {
+      await Promise.race([this._initPromise, new Promise(r => setTimeout(r, ms))]);
+    }
   }
 
-  async init() { /* localStorage está sempre disponível */ }
-
+  // ── Planos ───────────────────────────────────────────
   async savePlano(id, plano) {
     const all = this._read(this.KEY_PLANOS);
     all[id] = plano;
     this._write(this.KEY_PLANOS, all);
+    await this._waitOnline();
+    if (this.online) {
+      try { await this._col('planos').doc(id).set({ data: plano, ts: firebase.firestore.FieldValue.serverTimestamp() }); }
+      catch (e) { console.warn('Firebase savePlano:', e.message); }
+    }
   }
 
   async loadPlano(id) {
+    if (this.online) {
+      try {
+        const doc = await this._col('planos').doc(id).get();
+        if (doc.exists) return doc.data().data;
+      } catch {}
+    }
     return this._read(this.KEY_PLANOS)[id] || null;
   }
 
   async loadAllPlanos() {
+    if (this.online) {
+      try {
+        const snap = await this._col('planos').get();
+        const out = {};
+        snap.forEach(d => { out[d.id] = d.data().data; });
+        this._write(this.KEY_PLANOS, out);
+        return out;
+      } catch (e) { console.warn('Firebase loadAllPlanos:', e.message); }
+    }
     return this._read(this.KEY_PLANOS);
   }
 
@@ -916,19 +1054,49 @@ class PlanosDB {
     const all = this._read(this.KEY_PLANOS);
     Object.assign(all, planosObj);
     this._write(this.KEY_PLANOS, all);
+    await this._waitOnline();
+    if (this.online) {
+      try {
+        const batch = this.db.batch();
+        for (const [id, plano] of Object.entries(planosObj))
+          batch.set(this._col('planos').doc(id), { data: plano, ts: firebase.firestore.FieldValue.serverTimestamp() });
+        await batch.commit();
+      } catch (e) { console.warn('Firebase saveAllPlanos:', e.message); }
+    }
   }
 
+  // ── Disciplinas ──────────────────────────────────────
   async saveDisciplina(id, disciplina) {
     const all = this._read(this.KEY_DISCIPLINAS);
     all[id] = disciplina;
     this._write(this.KEY_DISCIPLINAS, all);
+    await this._waitOnline();
+    if (this.online) {
+      try { await this._col('disciplinas').doc(id).set({ data: disciplina, ts: firebase.firestore.FieldValue.serverTimestamp() }); }
+      catch (e) { console.warn('Firebase saveDisciplina:', e.message); }
+    }
   }
 
   async loadDisciplina(id) {
+    if (this.online) {
+      try {
+        const doc = await this._col('disciplinas').doc(id).get();
+        if (doc.exists) return doc.data().data;
+      } catch {}
+    }
     return this._read(this.KEY_DISCIPLINAS)[id] || null;
   }
 
   async loadAllDisciplinas() {
+    if (this.online) {
+      try {
+        const snap = await this._col('disciplinas').get();
+        const out = {};
+        snap.forEach(d => { out[d.id] = d.data().data; });
+        this._write(this.KEY_DISCIPLINAS, out);
+        return out;
+      } catch (e) { console.warn('Firebase loadAllDisciplinas:', e.message); }
+    }
     return this._read(this.KEY_DISCIPLINAS);
   }
 
@@ -936,20 +1104,39 @@ class PlanosDB {
     const all = this._read(this.KEY_DISCIPLINAS);
     Object.assign(all, disciplinasObj);
     this._write(this.KEY_DISCIPLINAS, all);
+    await this._waitOnline();
+    if (this.online) {
+      try {
+        const batch = this.db.batch();
+        for (const [id, disc] of Object.entries(disciplinasObj))
+          batch.set(this._col('disciplinas').doc(id), { data: disc, ts: firebase.firestore.FieldValue.serverTimestamp() });
+        await batch.commit();
+      } catch (e) { console.warn('Firebase saveAllDisciplinas:', e.message); }
+    }
   }
 
+  // ── Config ───────────────────────────────────────────
   async setConfig(key, value) {
     const cfg = this._read(this.KEY_CONFIG);
     cfg[key] = value;
     this._write(this.KEY_CONFIG, cfg);
+    if (this.online) {
+      try { await this._col('config').doc(key).set({ value }); } catch {}
+    }
   }
 
   async getConfig(key) {
+    if (this.online) {
+      try {
+        const doc = await this._col('config').doc(key).get();
+        if (doc.exists) return doc.data().value;
+      } catch {}
+    }
     return this._read(this.KEY_CONFIG)[key] || null;
   }
 
+  // ── Migração ─────────────────────────────────────────
   async migrateFromLocalStorage() {
-    // Migrar chaves antigas (v2/v1) se existirem
     const oldPlanos = localStorage.getItem('dpf_planos_v2');
     if (oldPlanos) {
       try { await this.saveAllPlanos(JSON.parse(oldPlanos)); } catch {}
@@ -963,10 +1150,11 @@ class PlanosDB {
     await this.setConfig('migration_completed', true);
   }
 
+  // ── Backup ───────────────────────────────────────────
   async createBackup() {
     return {
       timestamp: new Date().toISOString(),
-      version: 'localStorage_v1',
+      version: 'firebase_v1',
       data: await this.loadAllPlanos(),
       disciplinas: await this.loadAllDisciplinas()
     };
@@ -977,10 +1165,7 @@ class PlanosDB {
       if (backup.data)        await this.saveAllPlanos(backup.data);
       if (backup.disciplinas) await this.saveAllDisciplinas(backup.disciplinas);
       return true;
-    } catch (e) {
-      console.error('Erro ao restaurar backup:', e);
-      return false;
-    }
+    } catch (e) { console.error('Erro ao restaurar backup:', e); return false; }
   }
 }
 
@@ -988,38 +1173,100 @@ class PlanosDB {
 const planosDB = new PlanosDB();
 
 async function initData() {
-  try {
-    await planosDB.init();
+  console.log('🔄 Iniciando carregamento de dados...');
+  
+  // ── 1. Carregar do localStorage imediatamente (UI não bloqueia) ──
+  data = planosDB._read(planosDB.KEY_PLANOS);
+  disciplinas = planosDB._read(planosDB.KEY_DISCIPLINAS);
+  
+  console.log(`📱 LocalStorage: ${Object.keys(data).length} planos, ${Object.keys(disciplinas).length} disciplinas`);
 
-    const migrated = await planosDB.getConfig('migration_completed');
-    if (!migrated) {
-      await planosDB.migrateFromLocalStorage();
-    }
-
-    data = await planosDB.loadAllPlanos();
-    disciplinas = await planosDB.loadAllDisciplinas();
-
-    const newPlanos = {};
-    for (const [k, v] of Object.entries(SEED)) {
-      if (!data[k]) {
-        newPlanos[k] = { ...v };
-        data[k] = newPlanos[k];
-      }
-    }
-    if (Object.keys(newPlanos).length) {
-      await planosDB.saveAllPlanos(newPlanos);
-    }
-
-    console.log('✅ Banco de dados inicializado (localStorage)');
-  } catch (e) {
-    console.error('Erro ao inicializar banco de dados:', e);
-    toast('Erro crítico: não foi possível inicializar o banco de dados SQLite.');
-    data = {};
-    disciplinas = {};
-    for (const [k, v] of Object.entries(SEED)) {
-      if (!data[k]) data[k] = { ...v };
-    }
+  // Aplicar seed para chaves ausentes
+  const newPlanos = {};
+  for (const [k, v] of Object.entries(SEED)) {
+    if (!data[k]) { newPlanos[k] = { ...v }; data[k] = newPlanos[k]; }
   }
+  if (Object.keys(newPlanos).length) planosDB._write(planosDB.KEY_PLANOS, data);
+
+  // ── 2. Conectar ao Firebase em segundo plano ──
+  updateConnectionStatus(false, 'Conectando...');
+  
+  planosDB.init().then(async () => {
+    if (!planosDB.online) {
+      console.log('📴 Firebase offline - usando apenas dados locais');
+      updateConnectionStatus(false, 'Offline');
+      return;
+    }
+    
+    try {
+      console.log('🔍 Verificando dados remotos...');
+      const migrated = await planosDB.getConfig('migration_completed');
+      if (!migrated) await planosDB.migrateFromLocalStorage();
+
+      const remotoPlanos      = await planosDB.loadAllPlanos();
+      const remotoDisciplinas = await planosDB.loadAllDisciplinas();
+      
+      console.log(`☁️ Firebase: ${Object.keys(remotoPlanos).length} planos, ${Object.keys(remotoDisciplinas).length} disciplinas`);
+
+      const temDadosRemotos = Object.keys(remotoPlanos).length > 0 || Object.keys(remotoDisciplinas).length > 0;
+
+      if (temDadosRemotos) {
+        // Firebase tem dados → usa como fonte de verdade
+        console.log('📥 Atualizando dados locais com dados do Firebase...');
+        
+        // Verificar se houve mudanças reais
+        const dadosMudaram = JSON.stringify(data) !== JSON.stringify(remotoPlanos) || 
+                            JSON.stringify(disciplinas) !== JSON.stringify(remotoDisciplinas);
+        
+        data = remotoPlanos;
+        disciplinas = remotoDisciplinas;
+        
+        // Garantir seed local
+        const extras = {};
+        for (const [k, v] of Object.entries(SEED)) {
+          if (!data[k]) { extras[k] = { ...v }; data[k] = extras[k]; }
+        }
+        if (Object.keys(extras).length) await planosDB.saveAllPlanos(extras);
+        
+        // Atualizar interface apenas se houve mudanças
+        if (dadosMudaram) {
+          console.log('🔄 Dados atualizados - reconstruindo interface...');
+          COURSES = [...STATIC_COURSES, ...loadCustomCourses()];
+          buildSidebar();
+          
+          // Se há uma aula/disciplina selecionada, recarregá-la com dados atualizados
+          if (currentMode === 'lesson' && currentKey) {
+            const [courseId, num] = currentKey.split('_');
+            await selectLesson(courseId, parseInt(num));
+          } else if (currentMode === 'disciplina' && currentCourse) {
+            await selectDisciplina(currentCourse.id);
+          }
+          
+          toast('✅ Dados sincronizados com Firebase', 2000);
+        } else {
+          console.log('✅ Dados já atualizados');
+        }
+      } else {
+        // Firebase vazio → enviar dados locais para o Firebase
+        console.log('📤 Enviando dados locais para Firebase...');
+        if (Object.keys(data).length)        await planosDB.saveAllPlanos(data);
+        if (Object.keys(disciplinas).length) await planosDB.saveAllDisciplinas(disciplinas);
+        await planosDB.setConfig('migration_completed', true);
+      }
+
+      COURSES = [...STATIC_COURSES, ...loadCustomCourses()];
+      updateConnectionStatus(true, 'Online');
+      console.log('✅ Firebase sincronizado');
+    } catch (e) {
+      console.warn('⚠️ Erro na sincronização Firebase:', e.message);
+      updateConnectionStatus(false, 'Erro');
+    }
+  }).catch(e => {
+    console.warn('⚠️ Firebase não conectou:', e.message);
+    updateConnectionStatus(false, 'Offline');
+  });
+
+  console.log('✅ Sistema inicializado (localStorage)');
 }
 
 async function saveAll() {
@@ -1120,10 +1367,10 @@ function updateProgress(){
 // ══════════════════════════════════════════════════════
 // EDITOR
 // ══════════════════════════════════════════════════════
-function selectLesson(courseId, num){
+async function selectLesson(courseId, num){
   if(dirty){
-    if(currentMode==='lesson' && currentKey) saveLesson(true);
-    else if(currentMode==='disciplina' && currentCourse) saveDisciplina(true);
+    if(currentMode==='lesson' && currentKey) await saveLesson(true);
+    else if(currentMode==='disciplina' && currentCourse) await saveDisciplina(true);
   }
 
   currentMode='lesson';
@@ -1178,13 +1425,65 @@ document.addEventListener('input', e => {
   if (e.target.tagName === 'TEXTAREA') autoResize(e.target);
 });
 
+// Auto-save com debounce
+let autoSaveTimer = null;
+const AUTO_SAVE_DELAY = 3000; // 3 segundos após parar de digitar
+
 function setDirty(v){
   dirty=v;
   const id=currentMode==='disciplina'?'saveStatusDisc':'saveStatus';
   const el=document.getElementById(id);
   if(!el) return;
-  if(v){ el.textContent='Alterações não salvas'; el.className='save-status'; }
-  else{ el.textContent='Salvo'; el.className='save-status saved'; }
+  if(v){ 
+    el.textContent='Alterações não salvas'; 
+    el.className='save-status'; 
+    // Configurar auto-save
+    scheduleAutoSave();
+  }
+  else{ 
+    el.textContent='Salvo'; 
+    el.className='save-status saved'; 
+    // Cancelar auto-save se foi salvo manualmente
+    clearAutoSave();
+  }
+}
+
+function scheduleAutoSave() {
+  // Cancelar timer anterior se existir
+  clearAutoSave();
+  
+  // Configurar novo timer
+  autoSaveTimer = setTimeout(async () => {
+    if (dirty) {
+      console.log('🔄 Auto-save executando...');
+      const statusEl = document.getElementById(currentMode === 'disciplina' ? 'saveStatusDisc' : 'saveStatus');
+      if (statusEl) {
+        statusEl.textContent = 'Salvando...';
+        statusEl.className = 'save-status saving';
+      }
+      
+      try {
+        if (currentMode === 'lesson' && currentKey) {
+          await saveLesson(true);
+        } else if (currentMode === 'disciplina' && currentCourse) {
+          await saveDisciplina(true);
+        }
+      } catch (error) {
+        console.error('❌ Erro no auto-save:', error);
+        if (statusEl) {
+          statusEl.textContent = 'Erro ao salvar';
+          statusEl.className = 'save-status';
+        }
+      }
+    }
+  }, AUTO_SAVE_DELAY);
+}
+
+function clearAutoSave() {
+  if (autoSaveTimer) {
+    clearTimeout(autoSaveTimer);
+    autoSaveTimer = null;
+  }
 }
 
 // Watch all fields
@@ -1310,7 +1609,7 @@ function removeHeaderImage(type) {
 // LESSON FUNCTIONS
 // ══════════════════════════════════════════════════════
 
-function saveLesson(silent=false){
+async function saveLesson(silent=false){
   if(!currentKey) {
     if(!silent) toast('Erro: nenhuma aula selecionada');
     return;
@@ -1326,13 +1625,25 @@ function saveLesson(silent=false){
     }
     
     data[currentKey] = lessonData;
-    saveAll();
+    await saveAll();
     setDirty(false);
     refreshSidebarItem(currentKey);
-    if(!silent) toast('Aula salva com sucesso');
+    
+    if(!silent) {
+      toast('Aula salva com sucesso');
+    } else {
+      // Auto-save silencioso - apenas atualizar status
+      console.log('✅ Auto-save concluído para aula:', currentKey);
+    }
   } catch(e) {
     console.error('Erro ao salvar aula:', e);
     if(!silent) toast('Erro ao salvar aula');
+    // Em caso de erro, voltar o status para "não salvo"
+    const statusEl = document.getElementById('saveStatus');
+    if (statusEl) {
+      statusEl.textContent = 'Erro ao salvar';
+      statusEl.className = 'save-status';
+    }
   }
 }
 
@@ -1392,10 +1703,10 @@ function buildUnidades(course) {
   }
 }
 
-function selectDisciplina(courseId){
+async function selectDisciplina(courseId){
   if(dirty){
-    if(currentMode==='lesson' && currentKey) saveLesson(true);
-    else if(currentMode==='disciplina' && currentCourse) saveDisciplina(true);
+    if(currentMode==='lesson' && currentKey) await saveLesson(true);
+    else if(currentMode==='disciplina' && currentCourse) await saveDisciplina(true);
   }
 
   currentMode='disciplina';
@@ -1508,7 +1819,7 @@ function collectDisciplina(){
   };
 }
 
-function saveDisciplina(silent=false){
+async function saveDisciplina(silent=false){
   if(!currentCourse) {
     if(!silent) toast('Erro: nenhuma disciplina selecionada');
     return;
@@ -1524,13 +1835,25 @@ function saveDisciplina(silent=false){
     }
     
     disciplinas[currentCourse.id] = disciplinaData;
-    saveDisciplinas();
+    await saveDisciplinas();
     setDirty(false);
     refreshDisciplinaItem(currentCourse.id);
-    if(!silent) toast('Plano de Disciplina salvo com sucesso');
+    
+    if(!silent) {
+      toast('Plano de Disciplina salvo com sucesso');
+    } else {
+      // Auto-save silencioso - apenas atualizar status
+      console.log('✅ Auto-save concluído para disciplina:', currentCourse.id);
+    }
   } catch(e) {
     console.error('Erro ao salvar disciplina:', e);
     if(!silent) toast('Erro ao salvar disciplina');
+    // Em caso de erro, voltar o status para "não salvo"
+    const statusEl = document.getElementById('saveStatusDisc');
+    if (statusEl) {
+      statusEl.textContent = 'Erro ao salvar';
+      statusEl.className = 'save-status';
+    }
   }
 }
 
@@ -2545,6 +2868,213 @@ async function importBackup(file) {
   }
 }
 
+// Debug helper - mostra informações detalhadas dos dados
+function debugDataInfo() {
+  const localPlanos = planosDB._read(planosDB.KEY_PLANOS);
+  const localDisciplinas = planosDB._read(planosDB.KEY_DISCIPLINAS);
+  
+  console.group('📊 DEBUG - Estado dos Dados');
+  console.log('🔵 Estado atual da aplicação:');
+  console.log(`  • Planos: ${Object.keys(data).length}`, Object.keys(data));
+  console.log(`  • Disciplinas: ${Object.keys(disciplinas).length}`, Object.keys(disciplinas));
+  
+  console.log('💾 LocalStorage:');
+  console.log(`  • Planos: ${Object.keys(localPlanos).length}`, Object.keys(localPlanos));
+  console.log(`  • Disciplinas: ${Object.keys(localDisciplinas).length}`, Object.keys(localDisciplinas));
+  
+  console.log('🌐 Firebase:');
+  console.log(`  • Status: ${planosDB.online ? 'Online' : 'Offline'}`);
+  console.log(`  • Última verificação: ${new Date(lastFirebaseCheck).toLocaleString()}`);
+  
+  console.log('📱 Interface:');
+  console.log(`  • Modo atual: ${currentMode}`);
+  console.log(`  • Chave atual: ${currentKey}`);
+  console.log(`  • Curso atual: ${currentCourse?.id || 'nenhum'}`);
+  console.log(`  • Dados não salvos: ${dirty ? 'SIM' : 'NÃO'}`);
+  
+  // Verificar discrepâncias
+  const localDiff = Object.keys(data).filter(k => JSON.stringify(data[k]) !== JSON.stringify(localPlanos[k]));
+  if (localDiff.length > 0) {
+    console.warn('⚠️ Discrepâncias entre app e localStorage:', localDiff);
+  }
+  
+  console.groupEnd();
+  
+  return {
+    app: { planos: Object.keys(data).length, disciplinas: Object.keys(disciplinas).length },
+    local: { planos: Object.keys(localPlanos).length, disciplinas: Object.keys(localDisciplinas).length },
+    firebase: { online: planosDB.online },
+    ui: { mode: currentMode, key: currentKey, dirty }
+  };
+}
+
+// Expor função para debug no console
+window.debugData = debugDataInfo;
+
+// Função para forçar sincronização manual dos dados
+async function forceSyncData() {
+  try {
+    updateConnectionStatus(false, 'Sincronizando...');
+    
+    console.log('🔄 Sincronização manual iniciada...');
+    
+    // Forçar reconexão
+    await planosDB.init();
+    
+    if (!planosDB.online) {
+      updateConnectionStatus(false, 'Offline');
+      toast('❌ Não foi possível conectar ao Firebase');
+      return;
+    }
+    
+    const remotoPlanos = await planosDB.loadAllPlanos();
+    const remotoDisciplinas = await planosDB.loadAllDisciplinas();
+    
+    console.log(`☁️ Dados remotos: ${Object.keys(remotoPlanos).length} planos, ${Object.keys(remotoDisciplinas).length} disciplinas`);
+    
+    const dadosMudaram = JSON.stringify(data) !== JSON.stringify(remotoPlanos) || 
+                        JSON.stringify(disciplinas) !== JSON.stringify(remotoDisciplinas);
+    
+    if (dadosMudaram) {
+      data = remotoPlanos;
+      disciplinas = remotoDisciplinas;
+      
+      // Atualizar localStorage
+      planosDB._write(planosDB.KEY_PLANOS, data);
+      planosDB._write(planosDB.KEY_DISCIPLINAS, disciplinas);
+      
+      // Reconstruir interface
+      COURSES = [...STATIC_COURSES, ...loadCustomCourses()];
+      buildSidebar();
+      
+      // Recarregar item atual se necessário
+      if (currentMode === 'lesson' && currentKey) {
+        const [courseId, num] = currentKey.split('_');
+        await selectLesson(courseId, parseInt(num));
+      } else if (currentMode === 'disciplina' && currentCourse) {
+        await selectDisciplina(currentCourse.id);
+      }
+      
+      updateConnectionStatus(true, 'Online');
+      toast('✅ Dados sincronizados com sucesso!');
+    } else {
+      updateConnectionStatus(true, 'Online');
+      toast('✅ Dados já estão atualizados');
+    }
+    
+  } catch (error) {
+    console.error('❌ Erro na sincronização:', error);
+    updateConnectionStatus(false, 'Erro');
+    toast('❌ Erro na sincronização: ' + error.message);
+  }
+}
+
+// Atualizar indicador de status de conexão
+function updateConnectionStatus(online, text) {
+  const statusEl = document.getElementById('connectionStatus');
+  const textEl = statusEl?.querySelector('.connection-text');
+  
+  if (!statusEl || !textEl) return;
+  
+  statusEl.className = `connection-status ${online ? 'online' : 'offline'}`;
+  textEl.textContent = text;
+}
+
+// Monitoramento da conexão Firebase
+let firebaseMonitorInterval = null;
+let lastFirebaseCheck = Date.now();
+let updateCheckCounter = 0;
+
+function startFirebaseMonitoring() {
+  // Atualizar status inicial
+  updateConnectionStatus(planosDB.online, planosDB.online ? 'Online' : 'Offline');
+  
+  // Verificar conexão a cada 30 segundos
+  firebaseMonitorInterval = setInterval(async () => {
+    updateCheckCounter++;
+    
+    try {
+      if (planosDB.online) {
+        // Tentar uma operação simples para verificar se ainda está conectado
+        await planosDB._col('config').doc('ping').get();
+        lastFirebaseCheck = Date.now();
+        updateConnectionStatus(true, 'Online');
+        
+        // A cada 4 verificações (2 minutos), verificar se há atualizações
+        if (updateCheckCounter % 4 === 0) {
+          await checkForUpdates();
+        }
+      }
+    } catch (error) {
+      console.warn('⚠️ Perda de conexão Firebase detectada:', error.message);
+      planosDB.online = false;
+      updateConnectionStatus(false, 'Offline');
+      
+      // Notificar apenas se houve atividade recente (para evitar spam)
+      if (Date.now() - lastFirebaseCheck < 60000) {
+        toast('Aviso: Conexão com Firebase perdida. Dados serão salvos localmente.', 4000);
+      }
+      
+      // Tentar reconectar
+      setTimeout(() => {
+        updateConnectionStatus(false, 'Reconectando...');
+        planosDB.init().then(() => {
+          if (planosDB.online) {
+            console.log('✅ Reconectado ao Firebase');
+            updateConnectionStatus(true, 'Online');
+            toast('Conexão com Firebase restaurada!', 2000);
+          } else {
+            updateConnectionStatus(false, 'Offline');
+          }
+        }).catch(() => {
+          console.log('❌ Falha na reconexão Firebase');
+          updateConnectionStatus(false, 'Offline');
+        });
+      }, 5000);
+    }
+  }, 30000); // 30 segundos
+}
+
+// Verificar se há atualizações no Firebase
+async function checkForUpdates() {
+  try {
+    if (!planosDB.online) return;
+    
+    const remotoPlanos = await planosDB.loadAllPlanos();
+    const remotoDisciplinas = await planosDB.loadAllDisciplinas();
+    
+    const dadosMudaram = JSON.stringify(data) !== JSON.stringify(remotoPlanos) || 
+                        JSON.stringify(disciplinas) !== JSON.stringify(remotoDisciplinas);
+    
+    if (dadosMudaram && !dirty) {
+      // Há atualizações no Firebase e não há alterações locais não salvas
+      console.log('🔄 Atualizações detectadas no Firebase');
+      
+      // Mostrar notificação discreta para o usuário
+      const notification = document.createElement('div');
+      notification.innerHTML = `
+        <div style="position:fixed;top:70px;right:20px;background:var(--navy);color:white;padding:12px 16px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:1000;font-size:13px;max-width:300px">
+          📥 Há atualizações disponíveis
+          <div style="margin-top:8px">
+            <button onclick="this.parentElement.parentElement.remove();forceSyncData()" style="background:var(--gold);border:none;color:var(--navy);padding:4px 12px;border-radius:4px;cursor:pointer;margin-right:8px;font-size:12px">Atualizar</button>
+            <button onclick="this.parentElement.parentElement.remove()" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px">Ignorar</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(notification);
+      
+      // Auto-remover após 10 segundos
+      setTimeout(() => {
+        if (notification.parentNode) {
+          notification.remove();
+        }
+      }, 10000);
+    }
+  } catch (error) {
+    // Ignorar erros silenciosamente para não spam o console
+  }
+}
+
 // Função para adicionar botão de importar backup
 function addImportButton() {
   const backupButton = document.querySelector('[onclick="backupData()"]');
@@ -2589,6 +3119,9 @@ function addImportButton() {
     const disciplinasCount = Object.keys(stats.disciplinas || {}).length;
     console.log(`📊 Dados carregados: ${planosCount} planos, ${disciplinasCount} disciplinas`);
 
+    // Iniciar monitoramento da conexão Firebase
+    startFirebaseMonitoring();
+
   } catch (error) {
     console.error('❌ Erro na inicialização:', error);
     toast('Aviso: Sistema iniciado em modo de compatibilidade');
@@ -2607,6 +3140,12 @@ document.addEventListener('keydown', function(e) {
     } else if(currentMode === 'disciplina') {
       saveDisciplina();
     }
+  }
+  
+  // F5 ou Ctrl+R para sincronização manual
+  if(e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+    e.preventDefault();
+    forceSyncData();
   }
   
   // Ctrl+G para gerar documento

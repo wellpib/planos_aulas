@@ -33,21 +33,41 @@
             font-size: 1.2em;
             opacity: 0.9;
         }
+        .btn-group {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
         .btn {
-            display: inline-block;
-            padding: 15px 30px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 28px;
             background: #c8a84b;
             color: #0f2044;
             text-decoration: none;
             border-radius: 8px;
             font-weight: bold;
-            font-size: 1.1em;
+            font-size: 1.05em;
             transition: all 0.3s ease;
+            min-width: 200px;
+            justify-content: center;
         }
         .btn:hover {
             background: #e8c96b;
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
+        .btn.secondary {
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+        .btn.secondary:hover {
+            background: rgba(255,255,255,0.25);
+            border-color: #fff;
         }
         .logo {
             margin-bottom: 30px;
@@ -60,11 +80,6 @@
             border-radius: 20px;
             font-size: 0.9em;
             margin-bottom: 20px;
-        }
-        .countdown {
-            font-size: 0.9em;
-            opacity: 0.7;
-            margin-top: 20px;
         }
     </style>
 </head>
@@ -84,31 +99,12 @@
             Sistema completo para criação e gerenciamento de planos de aula dos cursos de formação da Polícia Federal.
         </p>
         
-        <a href="sistema_planos.html" class="btn">Acessar Sistema</a>
-        
-        <div class="countdown">
-            Redirecionamento automático em <span id="countdown">5</span> segundos...
+        <div class="btn-group">
+            <a href="sistema_planos.html" class="btn">&#128196; Planos de Aula</a>
+            <a href="cadastro_curso.html" class="btn secondary">&#127979; Cadastro de Cursos</a>
         </div>
     </div>
 
-    <script>
-        let count = 5;
-        const countdownElement = document.getElementById('countdown');
-        
-        const timer = setInterval(() => {
-            count--;
-            countdownElement.textContent = count;
-            
-            if (count <= 0) {
-                clearInterval(timer);
-                window.location.href = 'sistema_planos.html';
-            }
-        }, 1000);
-        
-        // Para o redirecionamento se o usuário clicar no link
-        document.querySelector('.btn').addEventListener('click', () => {
-            clearInterval(timer);
-        });
-    </script>
+    <script></script>
 </body>
 </html>
