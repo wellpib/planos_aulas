@@ -2214,78 +2214,60 @@ async function generateDoc(){
     return;
   }
   
-  // Verificar dependências e usar fallback se necessário
-  if(!canGenerateDocx()) {
-    toast('Gerando documento .docx offline...');
-    
-    // Preparar imagem e cabeçalho do Plano de Disciplina do curso
-    const discData = disciplinas[currentCourse.id] || {};
-    let customImageData = null;
-    if (discData.cabecalhoImage) {
-      const base64Data = discData.cabecalhoImage.split(',')[1];
-      customImageData = DocxGenerator.base64ToUint8Array(base64Data);
-    }
-    const cabecalhoTexto = discData.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA';
-
-    // Preparar dados para geração offline
-    const sections = [
-      ...cabecalhoTexto.split('\n').map(text => ({ type: 'header', text })),
-      { type: 'gap' },
-      { type: 'title', text: `PLANO DE AULA (${String(parseInt(currentKey.split('_')[1])).padStart(2,'0')} / ${String(currentCourse.total).padStart(2,'0')})` },
-      { type: 'gap' },
-      { type: 'field', label: 'CURSO', value: d.curso },
-      { type: 'field', label: 'ANO', value: d.ano },
-      { type: 'field', label: 'DISCIPLINA', value: d.disciplina },
-      { type: 'field', label: 'AVALIAÇÃO', value: d.avaliacao },
-      { type: 'field', label: 'DURAÇÃO', value: d.duracao },
-      { type: 'gap' },
-      { type: 'section', label: 'OBJETIVOS ESPECÍFICOS', text: d.objetivos },
-      { type: 'gap' },
-      { type: 'section', label: 'CONTEÚDOS', text: d.conteudos },
-      { type: 'gap' },
-      { type: 'section', label: 'ESTRATÉGIAS DE ENSINO', text: d.estrategias },
-      { type: 'gap' },
-      { type: 'section', label: 'RECURSOS MATERIAIS E DIDÁTICOS', text: d.recursos },
-      { type: 'gap' },
-      { type: 'section', label: 'AVALIAÇÃO DA AULA', text: d.avaliacaoAula }
-    ];
-    
-    const parts = currentKey.split('_');
-    const num = parseInt(parts[parts.length-1]);
-    const filename = `Plano_de_Aula_${currentCourse.id}_${String(num).padStart(2,'0')}.docx`;
-    
-    const result = generateOfflineDocx(sections, filename, customImageData);
-    if(result.success) {
-      if(result.isDocx) {
-        toast('Download de arquivo .docx iniciado!');
-      } else {
-        toast('Download de arquivo .txt iniciado (fallback)!');
-      }
-    } else {
-      toast('Erro na geração - tentando alternativa...');
-      generateTextDoc(); // Fallback final para texto simples
-    }
-    return;
-  }
-  
-  const parts=currentKey.split('_');
-  const num=parseInt(parts[parts.length-1]);
+  const parts = currentKey.split('_');
+  const num = parseInt(parts[parts.length-1]);
   
   if(isNaN(num)) {
     toast('Erro: número da aula inválido');
     return;
   }
   
+  // Gerar documento .docx
   toast('Gerando documento .docx...');
-  try{
-    const blob=await buildDocx(d, num, currentCourse.total);
-    const fname=`Plano_de_Aula_${String(num).padStart(2,'0')}_${currentCourse.id}.docx`;
-    saveAs(blob, fname);
-    toast('Download .docx iniciado!');
-  }catch(e){ 
-    console.error('Erro ao gerar documento:', e);
-    toast('Erro ao gerar .docx - tentando alternativa...');
-    generateTextDoc();
+  
+  // Preparar imagem e cabeçalho do Plano de Disciplina do curso
+  const discData = disciplinas[currentCourse.id] || {};
+  let customImageData = null;
+  if (discData.cabecalhoImage) {
+    const base64Data = discData.cabecalhoImage.split(',')[1];
+    customImageData = DocxGenerator.base64ToUint8Array(base64Data);
+  }
+  const cabecalhoTexto = discData.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA';
+
+  // Preparar dados para geração
+  const sections = [
+    ...cabecalhoTexto.split('\n').map(text => ({ type: 'header', text })),
+    { type: 'gap' },
+    { type: 'title', text: `PLANO DE AULA (${String(num).padStart(2,'0')} / ${String(currentCourse.total).padStart(2,'0')})` },
+    { type: 'gap' },
+    { type: 'field', label: 'CURSO', value: d.curso },
+    { type: 'field', label: 'ANO', value: d.ano },
+    { type: 'field', label: 'DISCIPLINA', value: d.disciplina },
+    { type: 'field', label: 'AVALIAÇÃO', value: d.avaliacao },
+    { type: 'field', label: 'DURAÇÃO', value: d.duracao },
+    { type: 'gap' },
+    { type: 'section', label: 'OBJETIVOS ESPECÍFICOS', text: d.objetivos },
+    { type: 'gap' },
+    { type: 'section', label: 'CONTEÚDOS', text: d.conteudos },
+    { type: 'gap' },
+    { type: 'section', label: 'ESTRATÉGIAS DE ENSINO', text: d.estrategias },
+    { type: 'gap' },
+    { type: 'section', label: 'RECURSOS MATERIAIS E DIDÁTICOS', text: d.recursos },
+    { type: 'gap' },
+    { type: 'section', label: 'AVALIAÇÃO DA AULA', text: d.avaliacaoAula }
+  ];
+  
+  const filename = `Plano_de_Aula_${currentCourse.id}_${String(num).padStart(2,'0')}.docx`;
+  
+  // Gerar documento diretamente
+  try {
+    const blob = DocxGenerator.create(sections, customImageData);
+    saveAs(blob, filename);
+    toast('Download de arquivo .docx iniciado!');
+  } catch (error) {
+    console.error('Erro na geração:', error);
+    toast('Erro na geração - tentando alternativa...');
+    generateTextDoc(); // Fallback final para texto simples
   }
 }
 
@@ -2656,83 +2638,68 @@ async function generateDisciplinaDoc(){
     return;
   }
   
-  // Verificar dependências e usar fallback se necessário
-  if(!canGenerateDocx()) {
-    toast('Gerando documento .docx offline...');
-    
-    // Preparar imagem customizada se existe
-    let customImageData = null;
-    if (d.cabecalhoImage) {
-      // Converter base64 para Uint8Array
-      const base64Data = d.cabecalhoImage.split(',')[1]; // Remove data:image/jpeg;base64,
-      customImageData = DocxGenerator.base64ToUint8Array(base64Data);
-    }
-    
-    // Preparar dados para geração offline
-    const sections = [
-      ...(d.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA').split('\n').map(text => ({ type: 'header', text })),
-      { type: 'gap' },
-      { type: 'title', text: 'PLANO DE DISCIPLINA' },
-      { type: 'gap' },
-      { type: 'field', label: 'CURSO', value: d.curso },
-      { type: 'field', label: 'ANO', value: d.ano },
-      { type: 'field', label: 'DISCIPLINA', value: d.disciplina },
-      { type: 'field', label: 'CARGA-HORÁRIA', value: d.cargaHoraria },
-      { type: 'field', label: 'MODALIDADE', value: d.modalidade },
-      { type: 'field', label: 'AVALIAÇÃO', value: d.avaliacao },
-      { type: 'gap' },
-      { type: 'mapa_competencias', conhecimento: d.conhecimento, habilidade: d.habilidade, atitude: d.atitude },
-      { type: 'gap' },
-      { type: 'section', label: 'EMENTA', text: d.ementa },
-      { type: 'gap' },
-      { type: 'section', label: 'OBJETIVO GERAL', text: d.objetivoGeral },
-      { type: 'gap' },
-      { type: 'section', label: 'PRÉ-REQUISITOS', text: d.prerequisitos },
-      { type: 'gap' },
-      ...Array.from({length: currentCourse.total}, (_, i) => {
-        const num = String(i + 1).padStart(2, '0');
-        return [
-          { type: 'unidade_card', num, totalStr: String(currentCourse.total).padStart(2, '0'),
-            objetivos: d[`unidade${num}_objetivos`], conteudo: d[`unidade${num}_conteudo`],
-            metodologia: d[`unidade${num}_metodologia`] },
-          { type: 'gap' },
-        ];
-      }).flat(),
-      { type: 'header', text: 'AVALIAÇÃO / VERIFICAÇÃO ESPECIAL' },
-      { type: 'paragraph', text: d.avaliacaoEspecial },
-      { type: 'gap' },
-      { type: 'header', text: 'REFERÊNCIAS' },
-      { type: 'paragraph', text: d.bibliografia },
-      { type: 'gap' },
-      { type: 'field', label: 'Elaborado por', value: d.elaboradoPor || '' },
-      { type: 'field', label: 'Revisado por', value: d.revisadoPor || '' }
-    ];
-    
-    const filename = `Plano_de_Disciplina_${currentCourse.id}.docx`;
-    
-    const result = generateOfflineDocx(sections, filename, customImageData);
-    if(result.success) {
-      if(result.isDocx) {
-        toast('Download de arquivo .docx iniciado!');
-      } else {
-        toast('Download de arquivo .txt iniciado (fallback)!');
-      }
-    } else {
-      toast('Erro na geração - tentando alternativa...');
-      generateDisciplinaTextDoc(); // Fallback final para texto simples
-    }
-    return;
+  // Gerar documento .docx
+  toast('Gerando documento .docx...');
+  
+  // Preparar imagem customizada se existe
+  let customImageData = null;
+  if (d.cabecalhoImage) {
+    // Converter base64 para Uint8Array
+    const base64Data = d.cabecalhoImage.split(',')[1]; // Remove data:image/jpeg;base64,
+    customImageData = DocxGenerator.base64ToUint8Array(base64Data);
   }
   
-  toast('Gerando documento .docx...');
-  try{
-    const blob=await buildDisciplinaDocx(d, currentCourse);
-    saveAs(blob, `Plano_de_Disciplina_${currentCourse.id}.docx`);
-    toast('Download .docx iniciado!');
-  }catch(e){ 
-    console.error('Erro ao gerar documento de disciplina:', e);
-    toast('Erro ao gerar .docx - tentando alternativa...');
-    generateDisciplinaTextDoc();
+  // Preparar dados para geração
+  const sections = [
+    ...(d.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA').split('\n').map(text => ({ type: 'header', text })),
+    { type: 'gap' },
+    { type: 'title', text: 'PLANO DE DISCIPLINA' },
+    { type: 'gap' },
+    { type: 'field', label: 'CURSO', value: d.curso },
+    { type: 'field', label: 'ANO', value: d.ano },
+    { type: 'field', label: 'DISCIPLINA', value: d.disciplina },
+    { type: 'field', label: 'CARGA-HORÁRIA', value: d.cargaHoraria },
+    { type: 'field', label: 'MODALIDADE', value: d.modalidade },
+    { type: 'field', label: 'AVALIAÇÃO', value: d.avaliacao },
+    { type: 'gap' },
+    { type: 'mapa_competencias', conhecimento: d.conhecimento, habilidade: d.habilidade, atitude: d.atitude },
+    { type: 'gap' },
+    { type: 'section', label: 'EMENTA', text: d.ementa },
+    { type: 'gap' },
+    { type: 'section', label: 'OBJETIVO GERAL', text: d.objetivoGeral },
+    { type: 'gap' },
+    { type: 'section', label: 'PRÉ-REQUISITOS', text: d.prerequisitos },
+    { type: 'gap' },
+    ...Array.from({length: currentCourse.total}, (_, i) => {
+      const num = String(i + 1).padStart(2, '0');
+      return [
+        { type: 'unidade_card', num, totalStr: String(currentCourse.total).padStart(2, '0'),
+          objetivos: d[`unidade${num}_objetivos`], conteudo: d[`unidade${num}_conteudo`],
+          metodologia: d[`unidade${num}_metodologia`] },
+        { type: 'gap' },
+      ];
+    }).flat(),
+    { type: 'header', text: 'AVALIAÇÃO / VERIFICAÇÃO ESPECIAL' },
+    { type: 'paragraph', text: d.avaliacaoEspecial },
+    { type: 'gap' },
+    { type: 'header', text: 'REFERÊNCIAS' },
+    { type: 'paragraph', text: d.bibliografia },
+    { type: 'gap' },
+    { type: 'field', label: 'Elaborado por', value: d.elaboradoPor || '' },
+    { type: 'field', label: 'Revisado por', value: d.revisadoPor || '' }
+  ];
+  
+  const filename = `Plano_de_Disciplina_${currentCourse.id}.docx`;
+  
+  // Gerar documento diretamente
+  try {
+    const blob = DocxGenerator.create(sections, customImageData);
+    saveAs(blob, filename);
+    toast('Download de arquivo .docx iniciado!');
+  } catch (error) {
+    console.error('Erro na geração:', error);
+    toast('Erro na geração - tentando alternativa...');
+    generateDisciplinaTextDoc(); // Fallback final para texto simples
   }
 }
 
