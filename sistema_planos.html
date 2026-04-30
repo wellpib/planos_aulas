@@ -417,29 +417,9 @@ window.DocxGenerator = {
 </script>
 <!-- Fallback: carregar bibliotecas externas se online -->
 <script>
-// Tentar carregar bibliotecas externas como fallback se estivermos online
-function loadExternalLibraries() {
-  if (navigator.onLine) {
-    // Carregar docx.js
-    const docxScript = document.createElement('script');
-    docxScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.umd.min.js';
-    docxScript.onerror = () => console.log('docx.js não pôde ser carregado (modo offline)');
-    document.head.appendChild(docxScript);
-    
-    // Carregar FileSaver.js adicional (já temos inline, mas pode melhorar)
-    const fileSaverScript = document.createElement('script');
-    fileSaverScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js';
-    fileSaverScript.onerror = () => console.log('FileSaver.js externo não pôde ser carregado (usando versão inline)');
-    document.head.appendChild(fileSaverScript);
-  }
-}
-
-// Carregar quando possível
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', loadExternalLibraries);
-} else {
-  loadExternalLibraries();
-}
+// ═══ BIBLIOTECAS EXTERNAS REMOVIDAS ═══
+// Sistema funciona completamente offline com FileSaver integrado
+// Bibliotecas externas removidas para melhor desempenho e confiabilidade
 </script>
 <style>
 @keyframes pulse {
@@ -1982,53 +1962,8 @@ async function buildDocx(d, num, totalAulas){
   const greyBorder = { style:BorderStyle.SINGLE, size:4, color:'AAAAAA' };
   const borders = s=>({ top:s,bottom:s,left:s,right:s });
 
-  function headRow(text){
-    return new TableRow({ children:[
-      new TableCell({
-        shading:{ fill:navy, type:ShadingType.CLEAR },
-        borders:borders(navyBorder),
-        margins:{top:20,bottom:20,left:120,right:120},
-        children:[new Paragraph({
-          alignment:AlignmentType.CENTER,
-          children:[new TextRun({ text, bold:true, color:'FFFFFF', size:22, font:'Arial' })]
-        })]
-      })
-    ]});
-  }
-
-  function bodyRow(text){
-    return new TableRow({ children:[
-      new TableCell({
-        borders:borders(greyBorder),
-        margins:{top:20,bottom:20,left:120,right:120},
-        children:[new Paragraph({ children:[
-          new TextRun({ text, size:20, font:'Arial' })
-        ]})]
-      })
-    ]});
-  }
-
-  function fieldTable(pairs){
-    return new Table({
-      width:{size:9360,type:WidthType.DXA},
-      borders:{ insideH:{ style:BorderStyle.NONE }, insideV:{ style:BorderStyle.NONE } },
-      rows:[new TableRow({ children: pairs.flatMap(([lbl,val,lw,vw])=>[
-        new TableCell({
-          width:{size:lw,type:WidthType.DXA},
-          shading:{fill:'D9E1F2',type:ShadingType.CLEAR},
-          borders:borders(greyBorder),
-          margins:{top:15,bottom:15,left:80,right:80},
-          children:[new Paragraph({ spacing:{line:240}, children:[new TextRun({ text:lbl, bold:true, size:18, font:'Arial' })] })]
-        }),
-        new TableCell({
-          width:{size:vw,type:WidthType.DXA},
-          borders:borders(greyBorder),
-          margins:{top:15,bottom:15,left:80,right:80},
-          children:[new Paragraph({ spacing:{line:240}, children:[new TextRun({ text:val||'', size:18, font:'Arial' })] })]
-        }),
-      ])})]
-    });
-  }
+// ═══ FUNÇÕES DUPLICADAS REMOVIDAS ═══  
+// headRow(), bodyRow(), fieldTable() consolidadas na seção buildDisciplinaDocx()
 
   // Função para criar tabela com alinhamentos customizados
   function fieldTableWithAlignment(leftField, rightField){
@@ -2179,43 +2114,9 @@ async function buildDocx(d, num, totalAulas){
 }
 
 // Função para verificar dependências
-function checkDependencies() {
-  const missing = [];
-  if (typeof docx === 'undefined') missing.push('docx');
-  if (typeof saveAs === 'undefined') missing.push('FileSaver');
-  return missing;
-}
+// ═══ FUNÇÕES DE GERAÇÃO DE DOCUMENTOS SIMPLIFICADAS ═══
 
-// Função auxiliar para verificar se pode gerar .docx
-function canGenerateDocx() {
-  return typeof docx !== 'undefined' && typeof saveAs !== 'undefined';
-}
-
-// Função para gerar documento usando implementação offline
-function generateOfflineDocx(sections, filename, customImageData = null) {
-  try {
-    const blob = DocxGenerator.create(sections, customImageData);
-    
-    // Verificar se realmente é um .docx (não fallback de texto)
-    const isRealDocx = blob.type.includes('wordprocessingml') || blob.size > 1000;
-    
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = isRealDocx ? filename : filename.replace('.docx', '.txt');
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(link.href);
-    
-    return { success: true, isDocx: isRealDocx };
-  } catch (error) {
-    console.error('Erro na geração offline:', error);
-    return { success: false, error: error.message };
-  }
-}
-
-// Função para gerar texto simples
+// Função principal para gerar texto simples
 function generateTextDoc() {
   if(!currentKey || !currentCourse) {
     toast('Erro: nenhuma aula selecionada');
