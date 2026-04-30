@@ -51,14 +51,29 @@
 // Implementação simplificada de geração de .docx usando apenas HTML/CSS/JavaScript
 window.DocxGenerator = {
   create: function(sections, customImageData = null) {
-    // Decidir qual imagem usar: customizada ou brasão padrão
-    const useCustomImage = !!customImageData;
-    
-    // Gerar XML do documento Word com imagem apropriada
-    const xml = this.generateDocumentXml(sections, !useCustomImage, useCustomImage ? customImageData : null);
-    
-    // Criar arquivo ZIP com a estrutura do .docx
-    return this.createDocxBlob(xml, customImageData);
+    try {
+      console.log('🔧 DocxGenerator.create iniciado');
+      console.log('📄 Número de seções:', sections.length);
+      
+      // Decidir qual imagem usar: customizada ou brasão padrão
+      const useCustomImage = !!customImageData;
+      console.log('🖼️ Usando imagem customizada:', useCustomImage);
+      
+      // Gerar XML do documento Word com imagem apropriada
+      console.log('📝 Gerando XML do documento...');
+      const xml = this.generateDocumentXml(sections, !useCustomImage, useCustomImage ? customImageData : null);
+      console.log('✅ XML gerado com sucesso, tamanho:', xml.length);
+      
+      // Criar arquivo ZIP com a estrutura do .docx
+      console.log('📦 Criando blob DOCX...');
+      const blob = this.createDocxBlob(xml, customImageData);
+      console.log('✅ Blob criado com sucesso, tamanho:', blob.size);
+      
+      return blob;
+    } catch (error) {
+      console.error('❌ Erro em DocxGenerator.create:', error);
+      throw error;
+    }
   },
   
   generateDocumentXml: function(sections, includeImage = true, customHeaderImage = null) {
@@ -89,11 +104,39 @@ window.DocxGenerator = {
       } else if (section.type === 'gap') {
         content += `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr></w:p>`;
       } else if (section.type === 'section') {
+        console.log('📝 Processando seção:', section.label, '| Formatada:', section.formatted);
+        
         const hdr = `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="0F2044"/><w:tcMar><w:top w:w="120" w:type="dxa"/><w:bottom w:w="120" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="22"/></w:rPr><w:t>${this.escapeXml(section.label)}</w:t></w:r></w:p></w:tc></w:tr>`;
-        const slines = (section.text || '').split('\n').filter(l => l.trim());
-        const sparas = slines.length
-          ? slines.map(l => `<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(l.trim())}</w:t></w:r></w:p>`).join('')
-          : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+        
+        let sparas = '';
+        if (section.formatted && section.text && (section.text.includes('<') && section.text.includes('>'))) {
+          // Processar HTML formatado
+          console.log('🎨 Processando texto formatado HTML');
+          try {
+            sparas = this.processFormattedText(section.text);
+          } catch (error) {
+            console.warn('⚠️ Erro no processamento formatado, usando fallback:', error);
+            const slines = (section.text || '').split('\n').filter(l => l.trim());
+            sparas = slines.length
+              ? slines.map(l => `<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(l.trim())}</w:t></w:r></w:p>`).join('')
+              : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+          }
+        } else {
+          // Processar texto simples
+          console.log('📄 Processando texto simples');
+          const slines = (section.text || '').split('\n');
+          const sparasArray = [];
+          for (let i = 0; i < slines.length; i++) {
+            const line = slines[i];
+            if (line.trim()) {
+              sparasArray.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(line.trim())}</w:t></w:r></w:p>`);
+            } else if (i < slines.length - 1) {
+              sparasArray.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
+            }
+          }
+          sparas = sparasArray.length > 0 ? sparasArray.join('') : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+        }
+        
         const body = `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${sparas}</w:tc></w:tr>`;
         content += `<w:tbl><w:tblPr><w:tblW w:w="10772" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:left w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:right w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="10772"/></w:tblGrid>${hdr}${body}</w:tbl><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr></w:p>`;
       } else if (section.type === 'mapa_competencias') {
@@ -101,9 +144,17 @@ window.DocxGenerator = {
         const navyHdr = `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="0F2044"/><w:tcMar><w:top w:w="120" w:type="dxa"/><w:bottom w:w="120" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="22"/></w:rPr><w:t>MAPA DE COMPETÊNCIAS</w:t></w:r></w:p></w:tc></w:tr>`;
         const subField = (label, text) => {
           const lbl = `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="D9E1F2"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr><w:t>${e2(label)}</w:t></w:r></w:p></w:tc></w:tr>`;
-          const lines = (text || '').split('\n').filter(l => l.trim());
-          const paras = lines.length
-            ? lines.map(l => `<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${e2(l.trim())}</w:t></w:r></w:p>`).join('')
+          const lines = (text || '').split('\n');
+          const parasArray = [];
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.trim()) {
+              parasArray.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${e2(line.trim())}</w:t></w:r></w:p>`);
+            } else if (i < lines.length - 1) {
+              parasArray.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
+            }
+          }
+          const paras = parasArray.length > 0 ? parasArray.join('')
             : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
           const cnt = `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${paras}</w:tc></w:tr>`;
           return lbl + cnt;
@@ -145,9 +196,17 @@ window.DocxGenerator = {
       `<w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="D9E1F2"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr><w:t>${esc(text)}</w:t></w:r></w:p></w:tc></w:tr>`;
 
     const contentRow = (text) => {
-      const lines = (text || '').split('\n').filter(l => l.trim());
-      const paragraphs = lines.length
-        ? lines.map(l => `<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${esc(l.trim())}</w:t></w:r></w:p>`).join('')
+      const lines = (text || '').split('\n');
+      const paragraphsArray = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.trim()) {
+          paragraphsArray.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${esc(line.trim())}</w:t></w:r></w:p>`);
+        } else if (i < lines.length - 1) {
+          paragraphsArray.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
+        }
+      }
+      const paragraphs = paragraphsArray.length > 0 ? paragraphsArray.join('')
         : '<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>';
       return `<w:tr><w:tc><w:tcPr><w:gridSpan w:val="2"/><w:tcW w:w="10772" w:type="dxa"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${paragraphs}</w:tc></w:tr>`;
     };
@@ -216,6 +275,315 @@ window.DocxGenerator = {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;');
+  },
+  
+  processFormattedText: function(htmlContent) {
+    if (!htmlContent) {
+      return `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+    }
+    
+    try {
+      // Detectar se realmente contém HTML complexo (tags além de quebras de linha)
+      const hasComplexHtml = /<(?!br\s*\/?>)[^>]+>/i.test(htmlContent);
+      
+      if (!hasComplexHtml) {
+        // Texto simples ou apenas com quebras de linha <br>
+        // Normalizar quebras de linha: converter <br> para \n e processar
+        const normalizedText = htmlContent
+          .replace(/<br\s*\/?>/gi, '\n') // Converter <br> para quebras de linha
+          .replace(/<[^>]*>/g, ''); // Remover outras tags se houver
+        
+        // Dividir por linhas mas preservar linhas vazias intencionais
+        const lines = normalizedText.split('\n');
+        const paragraphs = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (line.trim()) {
+            // Linha com conteúdo
+            paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(line.trim())}</w:t></w:r></w:p>`);
+          } else if (i < lines.length - 1) {
+            // Linha vazia no meio do texto (preservar como quebra)
+            paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
+          }
+        }
+        
+        return paragraphs.length > 0 
+          ? paragraphs.join('') 
+          : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+      }
+      
+      // HTML complexo - processar elementos
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = htmlContent;
+      
+      let paragraphs = [];
+      
+      const processElement = (element) => {
+        if (element.nodeType === Node.TEXT_NODE) {
+          const text = element.textContent;
+          if (text.trim()) {
+            // Dividir texto por quebras de linha e processar cada linha
+            const lines = text.split('\n');
+            const result = [];
+            
+            for (let i = 0; i < lines.length; i++) {
+              const line = lines[i];
+              if (line.trim()) {
+                result.push({
+                  type: 'text',
+                  content: this.escapeXml(line.trim()),
+                  bold: false,
+                  italic: false,
+                  underline: false
+                });
+              }
+              // Adicionar quebra se não for a última linha e há próxima linha
+              if (i < lines.length - 1) {
+                result.push({ type: 'break' });
+              }
+            }
+            return result;
+          }
+          return [];
+        }
+        
+        if (element.nodeType === Node.ELEMENT_NODE) {
+          const tagName = element.tagName.toLowerCase();
+          
+          if (tagName === 'br') {
+            return [{ type: 'break' }];
+          } else if (tagName === 'div' && element.className === 'time-block') {
+            return [{
+              type: 'time-block',
+              content: this.escapeXml(element.textContent.trim())
+            }];
+          } else if (tagName === 'table' && element.className === 'editor-table') {
+            return this.processTable(element);
+          } else if (tagName === 'b' || tagName === 'strong') {
+            return [{
+              type: 'text',
+              content: this.escapeXml(element.textContent.trim()),
+              bold: true,
+              italic: false,
+              underline: false
+            }];
+          } else if (tagName === 'i' || tagName === 'em') {
+            return [{
+              type: 'text',
+              content: this.escapeXml(element.textContent.trim()),
+              bold: false,
+              italic: true,
+              underline: false
+            }];
+          } else if (tagName === 'u') {
+            return [{
+              type: 'text',
+              content: this.escapeXml(element.textContent.trim()),
+              bold: false,
+              italic: false,
+              underline: true
+            }];
+          } else if (tagName === 'ul' || tagName === 'ol') {
+            const items = Array.from(element.children)
+              .filter(child => child.tagName.toLowerCase() === 'li')
+              .map(li => ({
+                type: 'list-item',
+                content: this.escapeXml(li.textContent.trim())
+              }));
+            return items;
+          } else if (tagName === 'p' || tagName === 'div') {
+            // Processar conteúdo do parágrafo e forçar nova linha após
+            let result = [];
+            Array.from(element.childNodes).forEach(child => {
+              result = result.concat(processElement(child));
+            });
+            result.push({ type: 'paragraph-break' });
+            return result;
+          }
+          
+          // Para outros elementos, processar filhos
+          let result = [];
+          Array.from(element.childNodes).forEach(child => {
+            result = result.concat(processElement(child));
+          });
+          return result;
+        }
+        
+        return [];
+      };
+      
+      // Processar todos os filhos e gerar parágrafos
+      let currentParagraph = [];
+      
+      Array.from(tempDiv.childNodes).forEach(child => {
+        const processed = processElement(child);
+        processed.forEach(item => {
+          if (item.type === 'text' || item.type === 'time-block') {
+            currentParagraph.push(item);
+          } else if (item.type === 'table') {
+            // Finalizar parágrafo atual antes da tabela se houver conteúdo
+            if (currentParagraph.length > 0) {
+              let runs = '';
+              let isTitleParagraph = false;
+              
+              currentParagraph.forEach(textItem => {
+                if (textItem.type === 'time-block') {
+                  // Formatação melhorada para time-block no Word - cor azul sem fundo
+                  runs += `<w:r><w:rPr><w:b/><w:color w:val="0066cc"/></w:rPr><w:t xml:space="preserve">🕐 ${textItem.content}</w:t></w:r>`;
+                } else {
+                  let formatting = '';
+                  if (textItem.bold) formatting += '<w:b/>';
+                  if (textItem.italic) formatting += '<w:i/>';
+                  if (textItem.underline) formatting += '<w:u w:val="single"/>';
+                  
+                  if (formatting) {
+                    runs += `<w:r><w:rPr>${formatting}</w:rPr><w:t xml:space="preserve">${textItem.content}</w:t></w:r>`;
+                  } else {
+                    runs += `<w:r><w:t xml:space="preserve">${textItem.content}</w:t></w:r>`;
+                  }
+                }
+              });
+              
+              paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr>${runs}</w:p>`);
+              currentParagraph = [];
+            }
+            
+            // Adicionar a tabela
+            paragraphs.push(item.content);
+          } else if (item.type === 'break' || item.type === 'paragraph-break') {
+            // Finalizar parágrafo atual se tiver conteúdo
+            if (currentParagraph.length > 0) {
+              let runs = '';
+              let isTitleParagraph = false;
+              
+              currentParagraph.forEach(textItem => {
+                if (textItem.type === 'time-block') {
+                  // Formatação melhorada para time-block no Word - cor azul sem fundo
+                  runs += `<w:r><w:rPr><w:b/><w:color w:val="0066cc"/></w:rPr><w:t xml:space="preserve">🕐 ${textItem.content}</w:t></w:r>`;
+                } else {
+                  let formatting = '';
+                  if (textItem.bold) formatting += '<w:b/>';
+                  if (textItem.italic) formatting += '<w:i/>';
+                  if (textItem.underline) formatting += '<w:u w:val="single"/>';
+                  
+                  if (formatting) {
+                    runs += `<w:r><w:rPr>${formatting}</w:rPr><w:t xml:space="preserve">${textItem.content}</w:t></w:r>`;
+                  } else {
+                    runs += `<w:r><w:t xml:space="preserve">${textItem.content}</w:t></w:r>`;
+                  }
+                }
+              });
+              
+              paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr>${runs}</w:p>`);
+              currentParagraph = [];
+            }
+            
+            // Adicionar quebra de linha vazia se for um break
+            if (item.type === 'break') {
+              paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
+            }
+          } else if (item.type === 'list-item') {
+            paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">• ${item.content}</w:t></w:r></w:p>`);
+          }
+        });
+      });
+      
+      // Finalizar último parágrafo se houver
+      if (currentParagraph.length > 0) {
+        let runs = '';
+        let isTitleParagraph = false;
+        
+        currentParagraph.forEach(textItem => {
+          if (textItem.type === 'time-block') {
+            // Formatação melhorada para time-block no Word - cor azul sem fundo
+            runs += `<w:r><w:rPr><w:b/><w:color w:val="0066cc"/></w:rPr><w:t xml:space="preserve">🕐 ${textItem.content}</w:t></w:r>`;
+          } else {
+            let formatting = '';
+            if (textItem.bold) formatting += '<w:b/>';
+            if (textItem.italic) formatting += '<w:i/>';
+            if (textItem.underline) formatting += '<w:u w:val="single"/>';
+            
+            if (formatting) {
+              runs += `<w:r><w:rPr>${formatting}</w:rPr><w:t xml:space="preserve">${textItem.content}</w:t></w:r>`;
+            } else {
+              runs += `<w:r><w:t xml:space="preserve">${textItem.content}</w:t></w:r>`;
+            }
+          }
+        });
+        
+        paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr>${runs}</w:p>`);
+      }
+      
+      return paragraphs.length > 0 
+        ? paragraphs.join('') 
+        : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+        
+    } catch (error) {
+      console.warn('Erro ao processar texto formatado, usando fallback:', error);
+      // Fallback melhorado: preservar quebras de linha
+      const lines = htmlContent
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]*>/g, '')
+        .split('\n');
+        
+      const paragraphs = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.trim()) {
+          paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(line.trim())}</w:t></w:r></w:p>`);
+        } else if (i < lines.length - 1) {
+          paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
+        }
+      }
+      
+      return paragraphs.length > 0
+        ? paragraphs.join('')
+        : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+    }
+  },
+  
+  processTable: function(tableElement) {
+    const rows = Array.from(tableElement.rows);
+    let tableXml = `<w:tbl><w:tblPr><w:tblW w:w="9500" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:insideV w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tblBorders></w:tblPr><w:tblGrid>`;
+    
+    // Determinar número de colunas
+    let maxCols = 0;
+    rows.forEach(row => {
+      maxCols = Math.max(maxCols, row.cells.length);
+    });
+    
+    // Adicionar colunas da grade
+    const colWidth = Math.floor(9500 / maxCols);
+    for (let i = 0; i < maxCols; i++) {
+      tableXml += `<w:gridCol w:w="${colWidth}"/>`;
+    }
+    tableXml += `</w:tblGrid>`;
+    
+    // Processar cada linha
+    rows.forEach(row => {
+      tableXml += `<w:tr>`;
+      Array.from(row.cells).forEach(cell => {
+        const isHeader = cell.tagName.toLowerCase() === 'th';
+        const cellText = this.escapeXml(cell.textContent.trim());
+        
+        tableXml += `<w:tc><w:tcPr><w:tcW w:w="${colWidth}" w:type="dxa"/>`;
+        if (isHeader) {
+          tableXml += `<w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/>`;
+        }
+        tableXml += `<w:tcMar><w:top w:w="108" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="108" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tcMar></w:tcPr>`;
+        tableXml += `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r>`;
+        if (isHeader) {
+          tableXml += `<w:rPr><w:b/></w:rPr>`;
+        }
+        tableXml += `<w:t xml:space="preserve">${cellText}</w:t></w:r></w:p></w:tc>`;
+      });
+      tableXml += `</w:tr>`;
+    });
+    
+    tableXml += `</w:tbl>`;
+    
+    return [{ type: 'table', content: tableXml }];
   },
   
   createDocxBlob: function(documentXml, customImageData = null) {
@@ -552,6 +920,103 @@ textarea.tall{min-height:120px}
 .disc-status.partial{background:var(--gold);border-color:var(--gold)}
 .disc-item .lesson-label{font-size:11px;color:rgba(255,255,255,.5);font-style:italic}
 .disc-item.active .lesson-label{color:var(--gold2);font-weight:500;font-style:normal}
+
+/* ═══ FORMATAÇÃO DE TEXTO ═══ */
+.format-btn{
+  background:white;
+  border:1px solid #ccc;
+  border-radius:3px;
+  padding:4px 8px;
+  cursor:pointer;
+  font-size:12px;
+  transition:all 0.2s;
+  min-width:auto;
+}
+.format-btn:hover{
+  background:#e6f3ff;
+  border-color:#007acc;
+  color:#007acc;
+}
+.format-btn:active{
+  background:#cce7ff;
+  transform:translateY(1px);
+}
+.separator{
+  color:#999;
+  margin:0 3px;
+  user-select:none;
+}
+.rich-editor{
+  font-family:-apple-system,BlinkMacSystemFont,sans-serif;
+  font-size:14px;
+  line-height:1.1;
+  color:#333;
+  resize:vertical;
+  min-height:220px;
+  border:1px solid #ddd;
+  border-radius:0 0 4px 4px;
+  padding:10px;
+  background:white;
+  outline:none;
+  overflow-y:auto;
+}
+.rich-editor:empty:before{
+  content:attr(data-placeholder);
+  color:#999;
+  pointer-events:none;
+  white-space:pre-line;
+  font-style:italic;
+  display:block;
+}
+.rich-editor:focus:empty:before{
+  opacity:0.7;
+}
+.rich-editor.empty:before{
+  content:attr(data-placeholder);
+  color:#999;
+  pointer-events:none;
+  white-space:pre-line;
+  font-style:italic;
+  display:block;
+}
+.rich-editor b,.rich-editor strong{font-weight:bold}
+.rich-editor i,.rich-editor em{font-style:italic}
+.rich-editor u{text-decoration:underline}
+.rich-editor ul{margin:10px 0;padding-left:25px}
+.rich-editor ol{margin:10px 0;padding-left:25px}
+.rich-editor li{margin:3px 0}
+.rich-editor p{margin:0;line-height:1.1}
+.rich-editor div{line-height:1.1}
+.rich-editor br{line-height:1.1}
+.time-block{
+  background:#e6f3ff;
+  border-left:4px solid #007acc;
+  padding:8px 12px;
+  margin:10px 0;
+  border-radius:3px;
+  font-weight:500;
+  cursor:pointer;
+}
+
+.editor-table{
+  border-collapse: collapse;
+  width: 100%;
+  margin: 10px 0;
+  border: 1px solid #ddd;
+}
+
+.editor-table th,
+.editor-table td{
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+  min-width: 50px;
+}
+
+.editor-table th{
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
 </style>
 </head>
 <body>
@@ -651,8 +1116,48 @@ textarea.tall{min-height:120px}
         <div class="section-divider"><span>Desenvolvimento da aula</span></div>
 
         <div class="field-group full">
-          <label>Estratégias de Ensino <span class="help" title="Roteiro detalhado com marcações de tempo">?</span></label>
-          <textarea id="f_estrategias" class="tall" style="min-height:220px" placeholder="0–15 min · Introdução&#10;Recepção dos alunos, apresentação dos professores e objetivos da aula.&#10;&#10;15–45 min · [Tópico 1]&#10;...&#10;&#10;45–80 min · [Tópico 2]&#10;...&#10;&#10;80–100 min · Encerramento&#10;Debriefing e revisão dos objetivos."></textarea>
+          <label>Estratégias de Ensino <span class="help" title="Roteiro detalhado com marcações de tempo e formatação">?</span></label>
+          
+          <!-- Barra de Ferramentas de Formatação -->
+          <div class="formatting-toolbar" style="background:#f5f5f5;border:1px solid #ddd;border-bottom:none;padding:8px;border-radius:4px 4px 0 0;display:flex;gap:5px;flex-wrap:wrap;">
+            <button type="button" onclick="formatText('bold')" class="format-btn" title="Negrito" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;"><b>B</b></button>
+            <button type="button" onclick="formatText('italic')" class="format-btn" title="Itálico" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;"><i>I</i></button>
+            <button type="button" onclick="formatText('underline')" class="format-btn" title="Sublinhado" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;"><u>U</u></button>
+            <span class="separator" style="color:#999;margin:0 3px;">|</span>
+            <button type="button" onclick="formatText('insertUnorderedList')" class="format-btn" title="Lista com marcadores" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;">• Lista</button>
+            <button type="button" onclick="formatText('insertOrderedList')" class="format-btn" title="Lista numerada" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;">1. Lista</button>
+            <span class="separator" style="color:#999;margin:0 3px;">|</span>
+            <button type="button" onclick="insertTimeBlock()" class="format-btn" title="Inserir bloco de tempo" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;">🕐 Tempo</button>
+            <button type="button" onclick="insertTable()" class="format-btn" title="Inserir tabela" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;">📋 Tabela</button>
+            <button type="button" onclick="clearFormatting()" class="format-btn" title="Limpar formatação" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;">∅ Limpar</button>
+          </div>
+          
+          <div id="f_estrategias" 
+               contenteditable="true" 
+               class="rich-editor tall" 
+               style="min-height:220px;border:1px solid #ddd;border-radius:0 0 4px 4px;padding:10px;background:white;outline:none;overflow-y:auto;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.1;color:#333;"
+               data-placeholder="Digite as estratégias de ensino com formatação...
+
+📝 Use a barra de ferramentas acima para:
+• Aplicar negrito, itálico, sublinhado
+• Criar listas organizadas
+• Inserir blocos de tempo (🕐 Tempo)
+• Inserir tabelas (📋 Tabela)
+• Limpar formatação
+
+Exemplo:
+0–15 min · Introdução
+Recepção dos alunos e apresentação dos objetivos
+
+15–45 min · Desenvolvimento
+Exposição do conteúdo principal
+
+45–60 min · Encerramento
+Síntese e avaliação"
+               onblur="setDirty(); updatePlaceholder(this);" 
+               onpaste="handlePaste(event)"
+               oninput="updatePlaceholder(this)">
+          </div>
         </div>
 
         <div class="section-divider"><span>Infraestrutura</span></div>
@@ -829,6 +1334,201 @@ function loadCustomCourses() {
 }
 
 let COURSES = [...STATIC_COURSES, ...loadCustomCourses()];
+
+// ═══ FUNÇÕES DE FORMATAÇÃO DE TEXTO ═══
+function formatText(command) {
+  const editor = document.getElementById('f_estrategias');
+  if (!editor) return;
+  
+  editor.focus();
+  
+  try {
+    document.execCommand(command, false, null);
+    if (typeof setDirty === 'function') {
+      setDirty(); // Marcar como modificado para auto-save
+    }
+  } catch (error) {
+    console.warn('Comando de formatação não suportado:', command);
+  }
+}
+
+function insertTimeBlock() {
+  const editor = document.getElementById('f_estrategias');
+  if (!editor) return;
+  
+  const selection = window.getSelection();
+  if (selection.rangeCount === 0) return;
+  
+  const range = selection.getRangeAt(0);
+  
+  const timeBlock = document.createElement('div');
+  timeBlock.className = 'time-block';
+  timeBlock.style.cssText = 'background:#e6f3ff;border-left:4px solid #007acc;padding:8px 12px;margin:10px 0;border-radius:3px;font-weight:500;';
+  timeBlock.innerHTML = '<strong>0–15 min · </strong>Descreva a atividade';
+  
+  range.deleteContents();
+  range.insertNode(timeBlock);
+  
+  // Adicionar quebra de linha após o bloco
+  const lineBreak = document.createElement('br');
+  const newRange = document.createRange();
+  newRange.setStartAfter(timeBlock);
+  newRange.insertNode(lineBreak);
+  
+  // Posicionar cursor após a quebra de linha
+  newRange.setStartAfter(lineBreak);
+  newRange.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(newRange);
+  
+  if (typeof setDirty === 'function') {
+    setDirty();
+  }
+}
+
+function insertTable() {
+  const editor = document.getElementById('f_estrategias');
+  if (!editor) return;
+  
+  const selection = window.getSelection();
+  if (selection.rangeCount === 0) return;
+  
+  const range = selection.getRangeAt(0);
+  
+  // Perguntar ao usuário quantas colunas e linhas deseja
+  const cols = prompt('Quantas colunas deseja na tabela? (2-10)', '2');
+  if (!cols || isNaN(cols) || cols < 2 || cols > 10) return;
+  
+  const rows = prompt('Quantas linhas deseja na tabela? (2-10)', '2');
+  if (!rows || isNaN(rows) || rows < 2 || rows > 10) return;
+  
+  const numCols = parseInt(cols);
+  const numRows = parseInt(rows);
+  
+  // Criar tabela dinamicamente
+  const table = document.createElement('table');
+  table.className = 'editor-table';
+  table.contentEditable = 'true';
+  table.style.cssText = 'border-collapse:collapse;width:100%;margin:10px 0;border:1px solid #ddd;';
+  
+  // Criar cabeçalho
+  let headerHTML = '<thead><tr>';
+  for (let c = 1; c <= numCols; c++) {
+    headerHTML += `<th style="border:1px solid #ddd;padding:8px;background-color:#f5f5f5;font-weight:bold;">Coluna ${c}</th>`;
+  }
+  headerHTML += '</tr></thead>';
+  
+  // Criar corpo da tabela
+  let bodyHTML = '<tbody>';
+  for (let r = 1; r <= numRows; r++) {
+    bodyHTML += '<tr>';
+    for (let c = 1; c <= numCols; c++) {
+      bodyHTML += `<td style="border:1px solid #ddd;padding:8px;">Linha ${r}, Col ${c}</td>`;
+    }
+    bodyHTML += '</tr>';
+  }
+  bodyHTML += '</tbody>';
+  
+  table.innerHTML = headerHTML + bodyHTML;
+  
+  range.deleteContents();
+  range.insertNode(table);
+  
+  // Adicionar quebra de linha após a tabela
+  const lineBreak = document.createElement('br');
+  const newRange = document.createRange();
+  newRange.setStartAfter(table);
+  newRange.insertNode(lineBreak);
+  
+  // Posicionar cursor após a quebra de linha
+  newRange.setStartAfter(lineBreak);
+  newRange.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(newRange);
+  
+  if (typeof setDirty === 'function') {
+    setDirty();
+  }
+}
+
+function clearFormatting() {
+  const editor = document.getElementById('f_estrategias');
+  if (!editor) return;
+  
+  editor.focus();
+  
+  if (window.getSelection().toString()) {
+    // Se há texto selecionado, remove apenas a formatação da seleção
+    document.execCommand('removeFormat', false, null);
+  } else {
+    // Se não há seleção, confirma se quer limpar todo o conteúdo
+    if (confirm('Limpar toda a formatação do campo Estratégias de Ensino?')) {
+      const plainText = editor.innerText || editor.textContent;
+      editor.innerHTML = plainText.replace(/\n/g, '<br>');
+    }
+  }
+  
+  if (typeof setDirty === 'function') {
+    setDirty();
+  }
+}
+
+function handlePaste(event) {
+  event.preventDefault();
+  
+  // Obter texto simples do clipboard
+  const text = (event.clipboardData || window.clipboardData).getData('text/plain');
+  
+  // Inserir como texto simples, mantendo quebras de linha
+  const formattedText = text.replace(/\n/g, '<br>');
+  document.execCommand('insertHTML', false, formattedText);
+  
+  if (typeof setDirty === 'function') {
+    setDirty();
+  }
+}
+
+function updatePlaceholder(element) {
+  if (!element) return;
+  
+  // Atualizar visual do placeholder
+  const isEmpty = !element.innerText.trim();
+  if (isEmpty && !element.innerHTML.trim()) {
+    element.classList.add('empty');
+  } else {
+    element.classList.remove('empty');
+  }
+}
+
+// Inicializar editor de formatação quando a página carregar
+function initRichEditor() {
+  const editor = document.getElementById('f_estrategias');
+  if (editor) {
+    // Configurar placeholder inicial
+    updatePlaceholder(editor);
+    
+    // Adicionar eventos
+    editor.addEventListener('focus', () => {
+      editor.classList.remove('empty');
+    });
+    
+    editor.addEventListener('blur', () => {
+      updatePlaceholder(editor);
+      if (typeof setDirty === 'function') {
+        setDirty();
+      }
+    });
+    
+    editor.addEventListener('input', () => {
+      updatePlaceholder(editor);
+      if (typeof setDirty === 'function') {
+        setDirty();
+      }
+    });
+    
+    console.log('Editor de formatação inicializado');
+  }
+}
 
 const DEFAULT_LESSON = (course, num = 1) => ({
   cabecalho: course._cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA',
@@ -1372,7 +2072,19 @@ async function selectLesson(courseId, num){
   document.getElementById('f_duracao').value=d.duracao||'2h/a';
   document.getElementById('f_objetivos').value=d.objetivos||'';
   document.getElementById('f_conteudos').value=d.conteudos||'';
-  document.getElementById('f_estrategias').value=d.estrategias||'';
+  
+  // Carregar estratégias com formatação (suporta HTML e texto simples)
+  const estrategias = d.estrategias || '';
+  const estrategiasField = document.getElementById('f_estrategias');
+  if (estrategias.includes('<') && estrategias.includes('>')) {
+    // É HTML - carrega diretamente
+    estrategiasField.innerHTML = estrategias;
+  } else {
+    // É texto simples - converte quebras de linha para HTML
+    estrategiasField.innerHTML = estrategias.replace(/\n/g, '<br>');
+  }
+  updatePlaceholder(estrategiasField);
+  
   document.getElementById('f_recursos').value=d.recursos||'';
   document.getElementById('f_avaliacaoAula').value=d.avaliacaoAula||'';
   const badge = document.getElementById('aulaBadge');
@@ -1390,6 +2102,9 @@ async function selectLesson(courseId, num){
   document.getElementById('btnGenDisc').style.display='none';
   resizeAllIn(document.getElementById('editorArea'));
   setDirty(false);
+  
+  // Inicializar editor de formatação
+  initRichEditor();
 }
 
 function autoResize(ta) {
@@ -1490,7 +2205,7 @@ function collectLesson(){
     duracao:document.getElementById('f_duracao').value,
     objetivos:document.getElementById('f_objetivos').value,
     conteudos:document.getElementById('f_conteudos').value,
-    estrategias:document.getElementById('f_estrategias').value,
+    estrategias:document.getElementById('f_estrategias').innerHTML, // Salvar HTML formatado
     recursos:document.getElementById('f_recursos').value,
     avaliacaoAula:document.getElementById('f_avaliacaoAula').value,
   };
@@ -2113,7 +2828,6 @@ async function buildDocx(d, num, totalAulas){
   return await Packer.toBlob(doc2);
 }
 
-// Função para verificar dependências
 // ═══ FUNÇÕES DE GERAÇÃO DE DOCUMENTOS SIMPLIFICADAS ═══
 
 // Função principal para gerar texto simples
@@ -2250,7 +2964,7 @@ async function generateDoc(){
     { type: 'gap' },
     { type: 'section', label: 'CONTEÚDOS', text: d.conteudos },
     { type: 'gap' },
-    { type: 'section', label: 'ESTRATÉGIAS DE ENSINO', text: d.estrategias },
+    { type: 'section', label: 'ESTRATÉGIAS DE ENSINO', text: d.estrategias, formatted: true },
     { type: 'gap' },
     { type: 'section', label: 'RECURSOS MATERIAIS E DIDÁTICOS', text: d.recursos },
     { type: 'gap' },
@@ -2261,11 +2975,21 @@ async function generateDoc(){
   
   // Gerar documento diretamente
   try {
+    console.log('🔧 Iniciando geração do documento...');
+    console.log('📄 Seções:', sections);
+    console.log('🖼️ Imagem customizada:', !!customImageData);
+    
     const blob = DocxGenerator.create(sections, customImageData);
+    
+    console.log('✅ Documento gerado com sucesso');
+    console.log('📁 Blob size:', blob.size);
+    console.log('📄 Blob type:', blob.type);
+    
     saveAs(blob, filename);
     toast('Download de arquivo .docx iniciado!');
   } catch (error) {
-    console.error('Erro na geração:', error);
+    console.error('❌ Erro na geração:', error);
+    console.error('🔍 Stack trace:', error.stack);
     toast('Erro na geração - tentando alternativa...');
     generateTextDoc(); // Fallback final para texto simples
   }
@@ -2419,9 +3143,17 @@ async function buildDisciplinaDocx(d, course){
     })]});
 
     const contentRows = (text) => {
-      const lines = (text||'').split('\n').filter(l=>l.trim());
-      const paragraphs = lines.length
-        ? lines.map(l=>new Paragraph({alignment:AlignmentType.BOTH,spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:l.trim(),size:20,font:'Arial'})]}))
+      const lines = (text||'').split('\n');
+      const paragraphsArray = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.trim()) {
+          paragraphsArray.push(new Paragraph({alignment:AlignmentType.BOTH,spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:line.trim(),size:20,font:'Arial'})]}));
+        } else if (i < lines.length - 1) {
+          paragraphsArray.push(new Paragraph({spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:'',size:20,font:'Arial'})]}));
+        }
+      }
+      const paragraphs = paragraphsArray.length > 0 ? paragraphsArray
         : [new Paragraph({spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:'',size:20,font:'Arial'})]})];
       return new TableRow({children:[new TableCell({
         columnSpan:2,
@@ -2462,9 +3194,17 @@ async function buildDisciplinaDocx(d, course){
 
   function mapaCompetenciasCard(d) {
     const subRows = (label, text) => {
-      const lines = (text||'').split('\n').filter(l=>l.trim());
-      const paras = lines.length
-        ? lines.map(l=>new Paragraph({alignment:AlignmentType.BOTH,spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:l.trim(),size:20,font:'Arial'})]}))
+      const lines = (text||'').split('\n');
+      const paragraphsArray = [];
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        if (line.trim()) {
+          paragraphsArray.push(new Paragraph({alignment:AlignmentType.BOTH,spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:line.trim(),size:20,font:'Arial'})]}));
+        } else if (i < lines.length - 1) {
+          paragraphsArray.push(new Paragraph({spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:'',size:20,font:'Arial'})]}));
+        }
+      }
+      const paras = paragraphsArray.length > 0 ? paragraphsArray
         : [new Paragraph({spacing:{before:0,after:0,line:240,lineRule:'exact'},children:[new TextRun({text:'',size:20,font:'Arial'})]})];
       return [
         new TableRow({children:[new TableCell({shading:{fill:'D9E1F2',type:ShadingType.CLEAR},borders:borders(greyBorder),margins:{top:8,bottom:8,left:120,right:120},
@@ -2693,7 +3433,16 @@ async function generateDisciplinaDoc(){
   
   // Gerar documento diretamente
   try {
+    console.log('🔧 Iniciando geração do documento de disciplina...');
+    console.log('📄 Seções:', sections);
+    console.log('🖼️ Imagem customizada:', !!customImageData);
+    
     const blob = DocxGenerator.create(sections, customImageData);
+    
+    console.log('✅ Documento de disciplina gerado com sucesso');
+    console.log('📁 Blob size:', blob.size);
+    console.log('📄 Blob type:', blob.type);
+    
     saveAs(blob, filename);
     toast('Download de arquivo .docx iniciado!');
   } catch (error) {
