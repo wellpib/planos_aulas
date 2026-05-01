@@ -167,6 +167,38 @@ window.DocxGenerator = {
         content += this.generateImageXml(section.id || 'image1');
       } else if (section.type === 'unidade_card') {
         content += this.generateUnidadeCardXml(section.num, section.totalStr, section.objetivos, section.conteudo, section.metodologia);
+      } else if (section.type === 'estrategias-blocks') {
+        const e2 = (s) => this.escapeXml(s || '');
+        let blocks = [];
+        try {
+          const parsed = JSON.parse(section.data || '[]');
+          if (Array.isArray(parsed) && parsed.length) { blocks = parsed; }
+          else { blocks = [{ titulo: '', descricao: section.data || '' }]; }
+        } catch(err) {
+          blocks = [{ titulo: '', descricao: section.data || '' }];
+        }
+        if (!blocks.length) blocks = [{ titulo: '', descricao: '' }];
+
+        const mainHdr = `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="0F2044"/><w:tcMar><w:top w:w="120" w:type="dxa"/><w:bottom w:w="120" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:color w:val="FFFFFF"/><w:sz w:val="22"/></w:rPr><w:t>${e2(section.label)}</w:t></w:r></w:p></w:tc></w:tr>`;
+        let blockRows = '';
+        for (const block of blocks) {
+          if (block.titulo && block.titulo.trim()) {
+            blockRows += `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="D9E1F2"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr><w:t>${e2(block.titulo.trim())}</w:t></w:r></w:p></w:tc></w:tr>`;
+          }
+          const lines = (block.descricao || '').split('\n');
+          const sparasArray = [];
+          for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            if (line.trim()) {
+              sparasArray.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr>${this.buildBoldRuns(line.trim())}</w:p>`);
+            } else if (i < lines.length - 1) {
+              sparasArray.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
+            }
+          }
+          const paras = sparasArray.length ? sparasArray.join('') : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+          blockRows += `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:tcMar><w:top w:w="150" w:type="dxa"/><w:bottom w:w="150" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>${paras}</w:tc></w:tr>`;
+        }
+        content += `<w:tbl><w:tblPr><w:tblW w:w="10772" w:type="dxa"/><w:tblBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:left w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:right w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/><w:insideH w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/></w:tblBorders></w:tblPr><w:tblGrid><w:gridCol w:w="10772"/></w:tblGrid>${mainHdr}${blockRows}</w:tbl><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr></w:p>`;
       }
     });
     
@@ -1267,6 +1299,11 @@ html,body{height:100%;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;fon
 .lesson-status.partial{background:var(--gold);border-color:var(--gold)}
 .lesson-label{font-size:11.5px;color:rgba(255,255,255,.6);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lesson-item.active .lesson-label{color:var(--gold2);font-weight:500}
+.lesson-reviewed-badge{font-size:10px;font-weight:700;color:var(--green);flex-shrink:0;line-height:1}
+.btn-revisado{background:transparent;color:var(--text3);border-color:var(--border2)}
+.btn-revisado:hover{background:var(--bg);border-color:var(--green);color:var(--green)}
+.btn-revisado.on{background:rgba(5,150,105,.09);color:var(--green);border-color:var(--green)}
+.btn-revisado.on:hover{background:rgba(5,150,105,.16)}
 /* ── MAIN ── */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 /* ── TOPBAR ── */
@@ -1724,6 +1761,18 @@ textarea.tall{min-height:120px}
 .textarea-like:focus{border-color:var(--navy3);box-shadow:0 0 0 3px rgba(30,58,114,.1)}
 .textarea-like:empty::before{content:attr(data-placeholder);color:var(--text3);pointer-events:none}
 .textarea-like b,.textarea-like strong{font-weight:700}
+#estrategias-container{display:flex;flex-direction:column;gap:8px}
+.est-card{border:1.5px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.est-card-header{background:var(--navy);color:var(--white);padding:8px 12px;display:flex;align-items:center;gap:8px}
+.est-titulo{background:transparent;border:none;color:var(--white);font-family:'IBM Plex Sans',sans-serif;font-size:11.5px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;outline:none;flex:1;min-width:0}
+.est-titulo::placeholder{color:rgba(255,255,255,.45);font-weight:400;text-transform:none;letter-spacing:0}
+.est-titulo:focus{border-bottom:1px solid rgba(255,255,255,.35)}
+.est-remove-btn{background:transparent;border:1px solid rgba(255,255,255,.35);color:rgba(255,255,255,.75);border-radius:3px;width:20px;height:20px;font-size:15px;line-height:1;cursor:pointer;padding:0;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s}
+.est-remove-btn:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.65);color:white}
+.est-card-body{padding:12px;background:var(--surface)}
+.est-descricao{width:100%;resize:none;overflow:hidden;min-height:70px;font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--text);background:transparent;border:none;outline:none;line-height:1.6}
+.est-add-btn{padding:2px 10px;border:1.5px solid var(--border2);border-radius:4px;background:var(--surface);cursor:pointer;font-size:12px;font-family:'IBM Plex Sans',sans-serif;color:var(--navy);font-weight:500;transition:all .15s}
+.est-add-btn:hover{background:var(--navy);border-color:var(--navy);color:white}
 
 /* Container do TinyMCE otimizado para toolbar sticky */
 .tox.tox-tinymce {
@@ -1926,9 +1975,9 @@ div[data-alloy-vertical-dir="toptobottom"] {
         <div class="field-group full">
           <div class="label-with-action">
             <label>Estratégias de Ensino</label>
-            <button type="button" class="btn-bold-inline" onclick="applyBold()" title="Negrito (Ctrl+B)"><b>N</b></button>
+            <button type="button" class="est-add-btn" onclick="addEstrategiaBlock('','')">+ Adicionar bloco</button>
           </div>
-          <div id="f_estrategias_editor" contenteditable="true" class="textarea-like tall" data-placeholder="Descreva as estratégias de ensino utilizadas na aula..."></div>
+          <div id="estrategias-container"></div>
           <textarea id="f_estrategias" style="display:none"></textarea>
         </div>
 
@@ -1950,6 +1999,10 @@ div[data-alloy-vertical-dir="toptobottom"] {
     </div>
     <div class="editor-footer">
       <span class="save-status" id="saveStatus">Edite os campos acima</span>
+      <button class="btn btn-sm btn-revisado" id="btnRevisado" onclick="toggleRevisado()" title="Marcar como revisado">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        Revisado
+      </button>
       <button class="btn btn-primary btn-sm" onclick="saveLesson()">
         <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         Salvar
@@ -2131,19 +2184,11 @@ function insertTimeTemplate() {
 
 
 function cleanWordContent() {
-  const textarea = document.getElementById('f_estrategias');
-  if (!textarea) return;
-  
-  if (confirm('Limpar conteúdo do campo Estratégias de Ensino? Esta ação não pode ser desfeita.')) {
-    textarea.value = '';
-    const editor = document.getElementById('f_estrategias_editor');
-    if (editor) editor.innerHTML = '';
-
+  if (confirm('Limpar o campo Estratégias de Ensino? Esta ação não pode ser desfeita.')) {
+    buildEstrategiasBlocks('');
+    syncEstrategiasToStorage();
     showTinyFeedback('✅ Campo limpo!');
-
-    if (typeof setDirty === 'function') {
-      setDirty(true);
-    }
+    setDirty(true);
   }
 }
 
@@ -2459,77 +2504,74 @@ function initRichEditor() {
   console.log('🎓 Inicializando editor estruturado de planos de aula...');
 }
 
-function applyBold() {
-  const editor = document.getElementById('f_estrategias_editor');
-  if (!editor) return;
-  editor.focus();
-  document.execCommand('bold');
-  syncEditorToTextarea();
+function buildEstrategiasBlocks(value) {
+  const container = document.getElementById('estrategias-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  let blocks = [];
+  if (value && value.trim()) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed) && parsed.length) {
+        blocks = parsed;
+      } else {
+        blocks = [{ titulo: '', descricao: htmlToPlainText(value) }];
+      }
+    } catch(e) {
+      blocks = [{ titulo: '', descricao: htmlToPlainText(value) }];
+    }
+  }
+
+  if (!blocks.length) blocks = [{ titulo: '', descricao: '' }];
+  blocks.forEach(b => addEstrategiaBlock(b.titulo || '', b.descricao || ''));
+}
+
+function addEstrategiaBlock(titulo, descricao) {
+  const container = document.getElementById('estrategias-container');
+  if (!container) return;
+
+  const card = document.createElement('div');
+  card.className = 'est-card';
+  card.innerHTML = `
+    <div class="est-card-header">
+      <input type="text" class="est-titulo" placeholder="Título do bloco (ex: 0–15 min · Introdução)">
+      <button type="button" class="est-remove-btn" onclick="removeEstrategiaBlock(this)" title="Remover bloco">×</button>
+    </div>
+    <div class="est-card-body">
+      <textarea class="est-descricao" placeholder="Descreva as estratégias de ensino deste bloco..."></textarea>
+    </div>
+  `;
+
+  card.querySelector('.est-titulo').value = titulo;
+  const ta = card.querySelector('.est-descricao');
+  ta.value = descricao;
+  container.appendChild(card);
+
+  card.querySelector('.est-titulo').addEventListener('input', () => { syncEstrategiasToStorage(); setDirty(true); });
+  ta.addEventListener('input', () => { autoResize(ta); syncEstrategiasToStorage(); setDirty(true); });
+  autoResize(ta);
+}
+
+function removeEstrategiaBlock(btn) {
+  const container = document.getElementById('estrategias-container');
+  if (!container || container.children.length <= 1) return;
+  btn.closest('.est-card').remove();
+  syncEstrategiasToStorage();
   setDirty(true);
 }
 
-function syncEditorToTextarea() {
-  const editor = document.getElementById('f_estrategias_editor');
+function syncEstrategiasToStorage() {
+  const container = document.getElementById('estrategias-container');
   const textarea = document.getElementById('f_estrategias');
-  if (!editor || !textarea) return;
-  textarea.value = editorToStorage(editor);
-}
-
-function editorToStorage(editor) {
-  const lines = [];
-  editor.childNodes.forEach(node => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      lines.push(node.textContent);
-    } else if (node.nodeName === 'DIV' || node.nodeName === 'P') {
-      const inner = node.innerHTML;
-      if (inner === '<br>' || inner === '') {
-        lines.push('');
-      } else {
-        lines.push(innerHTMLToStorage(inner));
-      }
-    } else if (node.nodeName === 'BR') {
-      lines.push('');
-    } else {
-      lines.push(innerHTMLToStorage(node.outerHTML));
-    }
-  });
-  return lines.join('\n');
-}
-
-function innerHTMLToStorage(html) {
-  return html
-    .replace(/<b>([\s\S]*?)<\/b>/gi, '\x00B\x00$1\x00/B\x00')
-    .replace(/<strong>([\s\S]*?)<\/strong>/gi, '\x00B\x00$1\x00/B\x00')
-    .replace(/<br\s*\/?>/gi, '')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/\x00B\x00/g, '<b>').replace(/\x00\/B\x00/g, '</b>');
-}
-
-function syncTextareaToEditor(content) {
-  const editor = document.getElementById('f_estrategias_editor');
-  const textarea = document.getElementById('f_estrategias');
-  if (!editor) return;
-  const clean = htmlToPlainText(content || '');
-  if (!clean) {
-    editor.innerHTML = '';
-  } else {
-    editor.innerHTML = clean.split('\n').map(line =>
-      `<div>${line ? storageLineToHTML(line) : '<br>'}</div>`
-    ).join('');
-  }
-  if (textarea) textarea.value = clean;
-}
-
-function storageLineToHTML(line) {
-  return line
-    .replace(/&/g, '&amp;')
-    .replace(/<b>/gi,  '\x01')
-    .replace(/<\/b>/gi, '\x02')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/\x01/g, '<b>')
-    .replace(/\x02/g, '</b>');
+  if (!container || !textarea) return '';
+  const blocks = Array.from(container.querySelectorAll('.est-card')).map(card => ({
+    titulo: card.querySelector('.est-titulo')?.value || '',
+    descricao: card.querySelector('.est-descricao')?.value || ''
+  }));
+  const json = JSON.stringify(blocks);
+  textarea.value = json;
+  return json;
 }
 
 // Converte HTML legado para texto simples preservando <b> e quebras de linha
@@ -2556,12 +2598,11 @@ function htmlToPlainText(content) {
 
 // ═══ FUNÇÕES AUXILIARES PARA EDITOR ESTRUTURADO ═══
 function getTinyMCEContent() {
-  const textarea = document.getElementById('f_estrategias');
-  return textarea ? textarea.value : '';
+  return syncEstrategiasToStorage();
 }
 
 function setTinyMCEContent(content) {
-  syncTextareaToEditor(content || '');
+  buildEstrategiasBlocks(content || '');
 }
 
 // Função para compatibilidade com código existente
@@ -2680,6 +2721,20 @@ let currentLesson = null; // Número da aula atual (0-45)
 let currentCourse = null;
 let currentMode = null; // 'lesson' | 'disciplina'
 let dirty = false;
+let currentRevisado = false;
+
+function toggleRevisado() {
+  currentRevisado = !currentRevisado;
+  updateRevisadoBtn(currentRevisado);
+  saveLesson(true);
+}
+
+function updateRevisadoBtn(val) {
+  const btn = document.getElementById('btnRevisado');
+  if (!btn) return;
+  btn.classList.toggle('on', val);
+  btn.title = val ? 'Plano revisado — clique para desmarcar' : 'Marcar como revisado';
+}
 
 function key(courseId, num){ return `${courseId}_${num}`; }
 
@@ -2820,7 +2875,7 @@ function openLesson(courseId, lessonIndex) {
   document.getElementById('f_avaliacaoAula').value = data?.avaliacaoAula || '';
   
   // Carregar campo estratégias
-  syncTextareaToEditor(data?.estrategias || '');
+  buildEstrategiasBlocks(data?.estrategias || '');
   
   // Mostrar/ocultar botões relevantes
   const btnGen = document.getElementById('btnGen');
@@ -3283,9 +3338,11 @@ function buildSidebar(){
           const k2=key(course.id,n);
           const c=completeness(data[k2]);
           const status=c===3?'done':c>0?'partial':'';
+          const reviewed=data[k2]?.revisado||false;
           return `<div class="lesson-item" id="li_${k2}" onclick="selectLesson('${course.id}',${n})">
             <div class="lesson-status ${status}"></div>
             <div class="lesson-label">Aula ${String(n).padStart(2,'0')} de ${String(course.total).padStart(2,'0')}</div>
+            ${reviewed?'<span class="lesson-reviewed-badge">✓</span>':''}
           </div>`;
         }).join('')}
       </div>`;
@@ -3349,6 +3406,8 @@ async function selectLesson(courseId, num){
   
   document.getElementById('f_recursos').value=d.recursos||'';
   document.getElementById('f_avaliacaoAula').value=d.avaliacaoAula||'';
+  currentRevisado = d.revisado || false;
+  updateRevisadoBtn(currentRevisado);
   const badge = document.getElementById('aulaBadge');
   badge.textContent=`Aula ${String(num).padStart(2,'0')} / ${String(currentCourse.total).padStart(2,'0')}`;
   badge.style.display='inline-flex';
@@ -3467,13 +3526,6 @@ function clearAutoSave() {
     }
   });
 
-const estrategiasEditor = document.getElementById('f_estrategias_editor');
-if (estrategiasEditor) {
-  estrategiasEditor.addEventListener('input', () => {
-    syncEditorToTextarea();
-    setDirty(true);
-  });
-}
 
 function collectLesson(){
   return {
@@ -3484,9 +3536,10 @@ function collectLesson(){
     duracao:document.getElementById('f_duracao').value,
     objetivos:document.getElementById('f_objetivos').value,
     conteudos:document.getElementById('f_conteudos').value,
-    estrategias: getTinyMCEContent(), // Usar TinyMCE para obter conteúdo
+    estrategias: getTinyMCEContent(),
     recursos:document.getElementById('f_recursos').value,
     avaliacaoAula:document.getElementById('f_avaliacaoAula').value,
+    revisado: currentRevisado,
   };
 }
 
@@ -3626,6 +3679,16 @@ function refreshSidebarItem(k){
   const status=c===3?'done':c>0?'partial':'';
   const dot=document.querySelector(`#li_${k} .lesson-status`);
   if(dot){ dot.className=`lesson-status ${status}`; }
+  // Update reviewed badge
+  const item=document.getElementById(`li_${k}`);
+  if(item){
+    let badge=item.querySelector('.lesson-reviewed-badge');
+    if(data[k]?.revisado){
+      if(!badge){ badge=document.createElement('span'); badge.className='lesson-reviewed-badge'; badge.textContent='✓'; item.appendChild(badge); }
+    } else {
+      if(badge) badge.remove();
+    }
+  }
   // Update course meta
   const parts=k.split('_');
   const courseId=parts[0];
@@ -4276,7 +4339,7 @@ async function generateDoc(){
     { type: 'gap' },
     { type: 'section', label: 'CONTEÚDOS', text: d.conteudos },
     { type: 'gap' },
-    { type: 'section', label: 'ESTRATÉGIAS DE ENSINO', text: d.estrategias },
+    { type: 'estrategias-blocks', label: 'ESTRATÉGIAS DE ENSINO', data: d.estrategias },
     { type: 'gap' },
     { type: 'section', label: 'RECURSOS MATERIAIS E DIDÁTICOS', text: d.recursos },
     { type: 'gap' },
@@ -5335,19 +5398,7 @@ function cleanWordText(text) {
 }
 
 function initPasteHandler() {
-  const editor = document.getElementById('f_estrategias_editor');
-  if (!editor) return;
-
-  editor.addEventListener('paste', function(e) {
-    e.preventDefault();
-    const clipboardData = e.clipboardData || window.clipboardData;
-    const plain = clipboardData.getData('text/plain') || '';
-    if (!plain) return;
-    const cleaned = cleanWordText(plain);
-    document.execCommand('insertText', false, cleaned);
-    syncEditorToTextarea();
-    setDirty(true);
-  });
+  // Paste is handled natively by the textarea fields inside est-card blocks
 }
 
 // Verificar disponibilidade do DocxGenerator (versão melhorada)
