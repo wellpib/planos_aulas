@@ -125,14 +125,14 @@ window.DocxGenerator = {
               : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
           }
         } else {
-          // Processar texto simples
+          // Processar texto simples (com suporte a <b> inline)
           console.log('📄 Processando texto simples');
           const slines = (section.text || '').split('\n');
           const sparasArray = [];
           for (let i = 0; i < slines.length; i++) {
             const line = slines[i];
             if (line.trim()) {
-              sparasArray.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(line.trim())}</w:t></w:r></w:p>`);
+              sparasArray.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr>${this.buildBoldRuns(line.trim())}</w:p>`);
             } else if (i < slines.length - 1) {
               sparasArray.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
             }
@@ -278,6 +278,21 @@ window.DocxGenerator = {
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;');
+  },
+
+  buildBoldRuns: function(line) {
+    if (!/<b>/i.test(line)) {
+      return `<w:r><w:t xml:space="preserve">${this.escapeXml(line)}</w:t></w:r>`;
+    }
+    let runs = '';
+    let bold = false;
+    for (const part of line.split(/(<b>|<\/b>)/i)) {
+      if (/^<b>$/i.test(part))  { bold = true;  continue; }
+      if (/^<\/b>$/i.test(part)){ bold = false; continue; }
+      if (!part) continue;
+      runs += `<w:r>${bold ? '<w:rPr><w:b/></w:rPr>' : ''}<w:t xml:space="preserve">${this.escapeXml(part)}</w:t></w:r>`;
+    }
+    return runs || `<w:r><w:t xml:space="preserve">${this.escapeXml(line)}</w:t></w:r>`;
   },
   
   processFormattedText: function(htmlContent) {
@@ -1674,6 +1689,41 @@ textarea.tall{min-height:120px}
   margin-top:0;
   scroll-margin-top:60px;
 }
+.label-with-action{display:flex;align-items:center;justify-content:space-between}
+.btn-bold-inline{
+  padding:1px 8px;
+  border:1.5px solid var(--border2);
+  border-radius:4px;
+  background:var(--surface);
+  cursor:pointer;
+  font-size:12px;
+  font-family:'IBM Plex Sans',sans-serif;
+  color:var(--text2);
+  line-height:1.4;
+  transition:all .15s;
+}
+.btn-bold-inline:hover{background:var(--bg);border-color:var(--navy3);color:var(--navy)}
+.textarea-like{
+  width:100%;
+  padding:9px 12px;
+  border:1.5px solid var(--border);
+  border-radius:var(--radius);
+  font-family:'IBM Plex Sans',sans-serif;
+  font-size:13.5px;
+  color:var(--text);
+  background:var(--surface);
+  line-height:1.6;
+  min-height:80px;
+  outline:none;
+  transition:border-color .15s,box-shadow .15s;
+  cursor:text;
+  white-space:pre-wrap;
+  word-break:break-word;
+}
+.textarea-like.tall{min-height:120px}
+.textarea-like:focus{border-color:var(--navy3);box-shadow:0 0 0 3px rgba(30,58,114,.1)}
+.textarea-like:empty::before{content:attr(data-placeholder);color:var(--text3);pointer-events:none}
+.textarea-like b,.textarea-like strong{font-weight:700}
 
 /* Container do TinyMCE otimizado para toolbar sticky */
 .tox.tox-tinymce {
@@ -1874,8 +1924,12 @@ div[data-alloy-vertical-dir="toptobottom"] {
         <div class="section-divider"><span>Desenvolvimento da aula</span></div>
 
         <div class="field-group full">
-          <label>Estratégias de Ensino</label>
-          <textarea id="f_estrategias" class="tall" placeholder="Descreva as estratégias de ensino utilizadas na aula..."></textarea>
+          <div class="label-with-action">
+            <label>Estratégias de Ensino</label>
+            <button type="button" class="btn-bold-inline" onclick="applyBold()" title="Negrito (Ctrl+B)"><b>N</b></button>
+          </div>
+          <div id="f_estrategias_editor" contenteditable="true" class="textarea-like tall" data-placeholder="Descreva as estratégias de ensino utilizadas na aula..."></div>
+          <textarea id="f_estrategias" style="display:none"></textarea>
         </div>
 
         <div class="section-divider"><span>Infraestrutura</span></div>
@@ -2082,6 +2136,8 @@ function cleanWordContent() {
   
   if (confirm('Limpar conteúdo do campo Estratégias de Ensino? Esta ação não pode ser desfeita.')) {
     textarea.value = '';
+    const editor = document.getElementById('f_estrategias_editor');
+    if (editor) editor.innerHTML = '';
 
     showTinyFeedback('✅ Campo limpo!');
 
@@ -2403,16 +2459,99 @@ function initRichEditor() {
   console.log('🎓 Inicializando editor estruturado de planos de aula...');
 }
 
-// Converte HTML legado para texto simples com quebras de linha
+function applyBold() {
+  const editor = document.getElementById('f_estrategias_editor');
+  if (!editor) return;
+  editor.focus();
+  document.execCommand('bold');
+  syncEditorToTextarea();
+  setDirty(true);
+}
+
+function syncEditorToTextarea() {
+  const editor = document.getElementById('f_estrategias_editor');
+  const textarea = document.getElementById('f_estrategias');
+  if (!editor || !textarea) return;
+  textarea.value = editorToStorage(editor);
+}
+
+function editorToStorage(editor) {
+  const lines = [];
+  editor.childNodes.forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      lines.push(node.textContent);
+    } else if (node.nodeName === 'DIV' || node.nodeName === 'P') {
+      const inner = node.innerHTML;
+      if (inner === '<br>' || inner === '') {
+        lines.push('');
+      } else {
+        lines.push(innerHTMLToStorage(inner));
+      }
+    } else if (node.nodeName === 'BR') {
+      lines.push('');
+    } else {
+      lines.push(innerHTMLToStorage(node.outerHTML));
+    }
+  });
+  return lines.join('\n');
+}
+
+function innerHTMLToStorage(html) {
+  return html
+    .replace(/<b>([\s\S]*?)<\/b>/gi, '\x00B\x00$1\x00/B\x00')
+    .replace(/<strong>([\s\S]*?)<\/strong>/gi, '\x00B\x00$1\x00/B\x00')
+    .replace(/<br\s*\/?>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/\x00B\x00/g, '<b>').replace(/\x00\/B\x00/g, '</b>');
+}
+
+function syncTextareaToEditor(content) {
+  const editor = document.getElementById('f_estrategias_editor');
+  const textarea = document.getElementById('f_estrategias');
+  if (!editor) return;
+  const clean = htmlToPlainText(content || '');
+  if (!clean) {
+    editor.innerHTML = '';
+  } else {
+    editor.innerHTML = clean.split('\n').map(line =>
+      `<div>${line ? storageLineToHTML(line) : '<br>'}</div>`
+    ).join('');
+  }
+  if (textarea) textarea.value = clean;
+}
+
+function storageLineToHTML(line) {
+  return line
+    .replace(/&/g, '&amp;')
+    .replace(/<b>/gi,  '\x01')
+    .replace(/<\/b>/gi, '\x02')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\x01/g, '<b>')
+    .replace(/\x02/g, '</b>');
+}
+
+// Converte HTML legado para texto simples preservando <b> e quebras de linha
 function htmlToPlainText(content) {
   if (!content || !/<[a-z]/i.test(content)) return content;
-  const tmp = document.createElement('div');
-  tmp.innerHTML = content
+  // Marcar <b>/<strong> para preservar após strip das outras tags
+  const marked = content
+    .replace(/<b>/gi, '\x00B\x00')
+    .replace(/<\/b>/gi, '\x00/B\x00')
+    .replace(/<strong>/gi, '\x00B\x00')
+    .replace(/<\/strong>/gi, '\x00/B\x00')
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/p>/gi, '\n')
     .replace(/<\/div>/gi, '\n')
     .replace(/<\/li>/gi, '\n');
-  return tmp.textContent.replace(/\n{3,}/g, '\n\n').trim();
+  const tmp = document.createElement('div');
+  tmp.innerHTML = marked;
+  return tmp.textContent
+    .replace(/\x00B\x00/g, '<b>')
+    .replace(/\x00\/B\x00/g, '</b>')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
 
 // ═══ FUNÇÕES AUXILIARES PARA EDITOR ESTRUTURADO ═══
@@ -2422,8 +2561,7 @@ function getTinyMCEContent() {
 }
 
 function setTinyMCEContent(content) {
-  const textarea = document.getElementById('f_estrategias');
-  if (textarea) textarea.value = htmlToPlainText(content || '');
+  syncTextareaToEditor(content || '');
 }
 
 // Função para compatibilidade com código existente
@@ -2681,11 +2819,8 @@ function openLesson(courseId, lessonIndex) {
   document.getElementById('f_recursos').value = data?.recursos || '';
   document.getElementById('f_avaliacaoAula').value = data?.avaliacaoAula || '';
   
-  // Carregar campo estratégias (converter HTML legado para texto simples)
-  const estrategiasField = document.getElementById('f_estrategias');
-  if (estrategiasField) {
-    estrategiasField.value = htmlToPlainText(data?.estrategias || '');
-  }
+  // Carregar campo estratégias
+  syncTextareaToEditor(data?.estrategias || '');
   
   // Mostrar/ocultar botões relevantes
   const btnGen = document.getElementById('btnGen');
@@ -3318,7 +3453,7 @@ function clearAutoSave() {
 }
 
 // Watch all fields
-['f_ano','f_avaliacao','f_duracao','f_objetivos','f_conteudos','f_estrategias','f_recursos','f_avaliacaoAula']
+['f_ano','f_avaliacao','f_duracao','f_objetivos','f_conteudos','f_recursos','f_avaliacaoAula']
   .forEach(id=>{
     const field = document.getElementById(id);
     if(field) {
@@ -3331,6 +3466,14 @@ function clearAutoSave() {
       });
     }
   });
+
+const estrategiasEditor = document.getElementById('f_estrategias_editor');
+if (estrategiasEditor) {
+  estrategiasEditor.addEventListener('input', () => {
+    syncEditorToTextarea();
+    setDirty(true);
+  });
+}
 
 function collectLesson(){
   return {
@@ -5192,24 +5335,17 @@ function cleanWordText(text) {
 }
 
 function initPasteHandler() {
-  const textarea = document.getElementById('f_estrategias');
-  if (!textarea) return;
+  const editor = document.getElementById('f_estrategias_editor');
+  if (!editor) return;
 
-  textarea.addEventListener('paste', function(e) {
+  editor.addEventListener('paste', function(e) {
     e.preventDefault();
-
     const clipboardData = e.clipboardData || window.clipboardData;
-    let pastedText = clipboardData.getData('text/plain') || '';
-
-    if (!pastedText) return;
-
-    const cleanedText = cleanWordText(pastedText);
-
-    const start = textarea.selectionStart;
-    const end = textarea.selectionEnd;
-    textarea.value = textarea.value.substring(0, start) + cleanedText + textarea.value.substring(end);
-    textarea.selectionStart = textarea.selectionEnd = start + cleanedText.length;
-
+    const plain = clipboardData.getData('text/plain') || '';
+    if (!plain) return;
+    const cleaned = cleanWordText(plain);
+    document.execCommand('insertText', false, cleaned);
+    syncEditorToTextarea();
     setDirty(true);
   });
 }
