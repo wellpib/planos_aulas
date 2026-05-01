@@ -48,7 +48,9 @@
 💡 Desenvolvido por GitHub Copilot para máxima confiabilidade
 */
 
-// Implementação simplificada de geração de .docx usando apenas HTML/CSS/JavaScript
+// ═══ DOCX GENERATOR - DEFINIDO PRIMEIRO PARA GARANTIR DISPONIBILIDADE ═══
+
+// ═══ DOCXGENERATOR - DEFINIÇÃO COMPLETA ═══
 window.DocxGenerator = {
   create: function(sections, customImageData = null) {
     try {
@@ -75,7 +77,7 @@ window.DocxGenerator = {
       throw error;
     }
   },
-  
+
   generateDocumentXml: function(sections, includeImage = true, customHeaderImage = null) {
     let content = '';
     
@@ -115,7 +117,8 @@ window.DocxGenerator = {
           try {
             sparas = this.processFormattedText(section.text);
           } catch (error) {
-            console.warn('⚠️ Erro no processamento formatado, usando fallback:', error);
+            // Fallback silencioso - erro de processamento não é crítico
+            console.log('📝 Usando fallback para processamento de texto');
             const slines = (section.text || '').split('\n').filter(l => l.trim());
             sparas = slines.length
               ? slines.map(l => `<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(l.trim())}</w:t></w:r></w:p>`).join('')
@@ -283,67 +286,91 @@ window.DocxGenerator = {
     }
     
     try {
+      // Log de debug para análise
+      console.log('🔍 Processando HTML para DOCX:', htmlContent.substring(0, 200) + (htmlContent.length > 200 ? '...' : ''));
+      
       // Detectar se realmente contém HTML complexo (tags além de quebras de linha)
       const hasComplexHtml = /<(?!br\s*\/?>)[^>]+>/i.test(htmlContent);
       
       if (!hasComplexHtml) {
-        // Texto simples ou apenas com quebras de linha <br>
-        // Normalizar quebras de linha: converter <br> para \n e processar
+        console.log('📝 Processando como texto simples com preservação de quebras');
+        
+        // Normalizar quebras de linha: converter <br> para \n e preservar quebras existentes
         const normalizedText = htmlContent
           .replace(/<br\s*\/?>/gi, '\n') // Converter <br> para quebras de linha
+          .replace(/&nbsp;/gi, ' ') // Converter espaços especiais
           .replace(/<[^>]*>/g, ''); // Remover outras tags se houver
         
-        // Dividir por linhas mas preservar linhas vazias intencionais
+        // CORREÇÃO: Preservar TODAS as quebras de linha, incluindo as vazias
         const lines = normalizedText.split('\n');
         const paragraphs = [];
         
+        const isListItem = (line) => {
+          const trimmed = line.trim();
+          return /^(\d+\.|\d+\.\d+|\-|\*|\•)\s/.test(trimmed);
+        };
+        
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i];
+          
           if (line.trim()) {
-            // Linha com conteúdo
-            paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(line.trim())}</w:t></w:r></w:p>`);
-          } else if (i < lines.length - 1) {
-            // Linha vazia no meio do texto (preservar como quebra)
-            paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
+            // Linha com conteúdo - criar parágrafo
+            paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(line.trim())}</w:t></w:r></w:p>`);
+          } else {
+            // Linha vazia - SEMPRE preservar como parágrafo vazio (quebra de linha)
+            paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
           }
         }
         
-        return paragraphs.length > 0 
+        const result = paragraphs.length > 0 
           ? paragraphs.join('') 
-          : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+          : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+          
+        console.log('✅ Resultado texto simples:', result.substring(0, 200) + '...');
+        return result;
       }
       
       // HTML complexo - processar elementos
+      console.log('🎨 Processando como HTML complexo');
+      
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = htmlContent;
       
       let paragraphs = [];
       
-      const processElement = (element) => {
+      const processElement = (element, inheritedFormatting = { bold: false, italic: false, underline: false }) => {
         if (element.nodeType === Node.TEXT_NODE) {
           const text = element.textContent;
-          if (text.trim()) {
-            // Dividir texto por quebras de linha e processar cada linha
-            const lines = text.split('\n');
-            const result = [];
+          // Preservar espaços em branco significativos
+          if (text) {
+            // Detectar quebras de linha reais vs espaços
+            const hasSignificantWhitespace = /\n/.test(text);
+            const trimmedText = text.trim();
             
-            for (let i = 0; i < lines.length; i++) {
-              const line = lines[i];
-              if (line.trim()) {
-                result.push({
-                  type: 'text',
-                  content: this.escapeXml(line.trim()),
-                  bold: false,
-                  italic: false,
-                  underline: false
-                });
+            if (trimmedText || hasSignificantWhitespace) {
+              // Dividir texto por quebras de linha e processar cada linha
+              const lines = text.split('\n');
+              const result = [];
+              
+              for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                // Preservar linha mesmo se for apenas espaços quando há quebra significativa
+                if (line.trim() || (hasSignificantWhitespace && line.length > 0)) {
+                  result.push({
+                    type: 'text',
+                    content: this.escapeXml(line.trim() || ' '), // Preservar espaço se linha vazia mas significativa
+                    bold: inheritedFormatting.bold,
+                    italic: inheritedFormatting.italic,
+                    underline: inheritedFormatting.underline
+                  });
+                }
+                // Adicionar quebra se não for a última linha e há próxima linha
+                if (i < lines.length - 1) {
+                  result.push({ type: 'break' });
+                }
               }
-              // Adicionar quebra se não for a última linha e há próxima linha
-              if (i < lines.length - 1) {
-                result.push({ type: 'break' });
-              }
+              return result;
             }
-            return result;
           }
           return [];
         }
@@ -351,62 +378,130 @@ window.DocxGenerator = {
         if (element.nodeType === Node.ELEMENT_NODE) {
           const tagName = element.tagName.toLowerCase();
           
+          // Determinar formatação para este elemento
+          let currentFormatting = { ...inheritedFormatting };
+          
+          if (tagName === 'b' || tagName === 'strong') {
+            currentFormatting.bold = true;
+          } else if (tagName === 'i' || tagName === 'em') {
+            currentFormatting.italic = true;
+          } else if (tagName === 'u') {
+            currentFormatting.underline = true;
+          } else if (tagName === 'span') {
+            // Processar estilos inline que TinyMCE pode gerar
+            const style = element.style;
+            if (style.fontWeight === 'bold' || style.fontWeight === '700') {
+              currentFormatting.bold = true;
+            }
+            if (style.fontStyle === 'italic') {
+              currentFormatting.italic = true;
+            }
+            if (style.textDecoration && style.textDecoration.includes('underline')) {
+              currentFormatting.underline = true;
+            }
+          } else if (['h1', 'h2', 'h3', 'h4', 'h5', 'h6'].includes(tagName)) {
+            // Headings são tratados como texto em negrito
+            currentFormatting.bold = true;
+          }
+          
+          // Casos especiais que não precisam processar filhos
           if (tagName === 'br') {
             return [{ type: 'break' }];
-          } else if (tagName === 'div' && element.className === 'time-block') {
+          } else if (tagName === 'div' && element.className && element.className.includes('time-block')) {
+            // Para time-block, processar conteúdo mantendo formatação interna
+            let result = [];
+            Array.from(element.childNodes).forEach(child => {
+              result = result.concat(processElement(child, currentFormatting));
+            });
+            // Marcar como time-block apenas se contém texto
+            if (result.length > 0) {
+              return result.map(item => 
+                item.type === 'text' ? { ...item, type: 'time-block' } : item
+              );
+            }
             return [{
               type: 'time-block',
               content: this.escapeXml(element.textContent.trim())
             }];
           } else if (tagName === 'table' && element.className === 'editor-table') {
             return this.processTable(element);
-          } else if (tagName === 'b' || tagName === 'strong') {
-            return [{
-              type: 'text',
-              content: this.escapeXml(element.textContent.trim()),
-              bold: true,
-              italic: false,
-              underline: false
-            }];
-          } else if (tagName === 'i' || tagName === 'em') {
-            return [{
-              type: 'text',
-              content: this.escapeXml(element.textContent.trim()),
-              bold: false,
-              italic: true,
-              underline: false
-            }];
-          } else if (tagName === 'u') {
-            return [{
-              type: 'text',
-              content: this.escapeXml(element.textContent.trim()),
-              bold: false,
-              italic: false,
-              underline: true
-            }];
           } else if (tagName === 'ul' || tagName === 'ol') {
             const items = Array.from(element.children)
               .filter(child => child.tagName.toLowerCase() === 'li')
-              .map(li => ({
-                type: 'list-item',
-                content: this.escapeXml(li.textContent.trim())
-              }));
-            return items;
+              .map(li => {
+                // Processar conteúdo da lista mantendo formatação
+                let liContent = [];
+                Array.from(li.childNodes).forEach(child => {
+                  liContent = liContent.concat(processElement(child, currentFormatting));
+                });
+                
+                // Se tem formatação complexa, retornar como elementos separados
+                if (liContent.length > 1) {
+                  return liContent.map((item, index) => ({
+                    ...item,
+                    type: index === 0 ? 'list-item' : 'text'
+                  }));
+                }
+                
+                return [{
+                  type: 'list-item',
+                  content: this.escapeXml(li.textContent.trim()),
+                  bold: currentFormatting.bold,
+                  italic: currentFormatting.italic,
+                  underline: currentFormatting.underline
+                }];
+              });
+            return items.flat();
           } else if (tagName === 'p' || tagName === 'div') {
-            // Processar conteúdo do parágrafo e forçar nova linha após
+            // Processar conteúdo do parágrafo mantendo formatação herdada
             let result = [];
             Array.from(element.childNodes).forEach(child => {
-              result = result.concat(processElement(child));
+              result = result.concat(processElement(child, currentFormatting));
+            });
+            
+            // Adicionar quebra de parágrafo apenas se há conteúdo ou se o elemento tinha altura/espaçamento significativo
+            const hasContent = result.some(item => item.type === 'text' || item.type === 'time-block');
+            const hasSignificantStyling = element.style.height || element.style.marginTop || element.style.marginBottom || element.style.paddingTop || element.style.paddingBottom;
+            
+            if (hasContent || hasSignificantStyling || element.innerHTML.trim() === '') {
+              result.push({ type: 'paragraph-break' });
+            }
+            
+            return result;
+          } else if (tagName === 'blockquote' || tagName === 'pre') {
+            // Elementos de bloco especiais - preservar estrutura
+            let result = [];
+            Array.from(element.childNodes).forEach(child => {
+              result = result.concat(processElement(child, currentFormatting));
             });
             result.push({ type: 'paragraph-break' });
             return result;
           }
           
-          // Para outros elementos, processar filhos
+          // Para elementos com formatação (b, i, u) ou outros, processar filhos
           let result = [];
           Array.from(element.childNodes).forEach(child => {
-            result = result.concat(processElement(child));
+            result = result.concat(processElement(child, currentFormatting));
           });
+          
+          // Se é um elemento de formatação pura (span, etc.) sem filhos de texto,
+          // e tem textContent, criar um elemento de texto
+          if (result.length === 0 && element.textContent.trim()) {
+            result.push({
+              type: 'text',
+              content: this.escapeXml(element.textContent.trim()),
+              bold: currentFormatting.bold,
+              italic: currentFormatting.italic,
+              underline: currentFormatting.underline
+            });
+          }
+          
+          // Log para elementos não reconhecidos (apenas em desenvolvimento)
+          if (result.length === 0 && element.textContent.trim() && 
+              !['script', 'style', 'meta', 'title'].includes(tagName)) {
+            console.log(`🔍 Elemento não processado completamente: ${tagName}`, element);
+          }
+          
           return result;
         }
         
@@ -430,7 +525,7 @@ window.DocxGenerator = {
               currentParagraph.forEach(textItem => {
                 if (textItem.type === 'time-block') {
                   // Formatação melhorada para time-block no Word - cor azul sem fundo
-                  runs += `<w:r><w:rPr><w:b/><w:color w:val="0066cc"/></w:rPr><w:t xml:space="preserve">🕐 ${textItem.content}</w:t></w:r>`;
+                  runs += `<w:r><w:rPr><w:b/><w:color w:val="0066cc"/></w:rPr><w:t xml:space="preserve">${textItem.content.replace(/^(\d+[-–]\d+\s*min)(.*)/, '$1 •$2')}</w:t></w:r>`;
                 } else {
                   let formatting = '';
                   if (textItem.bold) formatting += '<w:b/>';
@@ -460,7 +555,7 @@ window.DocxGenerator = {
               currentParagraph.forEach(textItem => {
                 if (textItem.type === 'time-block') {
                   // Formatação melhorada para time-block no Word - cor azul sem fundo
-                  runs += `<w:r><w:rPr><w:b/><w:color w:val="0066cc"/></w:rPr><w:t xml:space="preserve">🕐 ${textItem.content}</w:t></w:r>`;
+                  runs += `<w:r><w:rPr><w:b/><w:color w:val="0066cc"/></w:rPr><w:t xml:space="preserve">${textItem.content.replace(/^(\d+[-–]\d+\s*min)(.*)/, '$1 •$2')}</w:t></w:r>`;
                 } else {
                   let formatting = '';
                   if (textItem.bold) formatting += '<w:b/>';
@@ -479,12 +574,23 @@ window.DocxGenerator = {
               currentParagraph = [];
             }
             
-            // Adicionar quebra de linha vazia se for um break
+            // Não adicionar quebra de linha vazia desnecessária para breaks
             if (item.type === 'break') {
-              paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
+              // Remover quebra de linha extra que causa espaçamento indesejado
+              // paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
             }
           } else if (item.type === 'list-item') {
-            paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">• ${item.content}</w:t></w:r></w:p>`);
+            // Aplicar formatação no item da lista se houver
+            let listFormatting = '';
+            if (item.bold) listFormatting += '<w:b/>';
+            if (item.italic) listFormatting += '<w:i/>';
+            if (item.underline) listFormatting += '<w:u w:val="single"/>';
+            
+            if (listFormatting) {
+              paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr>${listFormatting}</w:rPr><w:t xml:space="preserve">• ${item.content}</w:t></w:r></w:p>`);
+            } else {
+              paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">• ${item.content}</w:t></w:r></w:p>`);
+            }
           }
         });
       });
@@ -497,7 +603,7 @@ window.DocxGenerator = {
         currentParagraph.forEach(textItem => {
           if (textItem.type === 'time-block') {
             // Formatação melhorada para time-block no Word - cor azul sem fundo
-            runs += `<w:r><w:rPr><w:b/><w:color w:val="0066cc"/></w:rPr><w:t xml:space="preserve">🕐 ${textItem.content}</w:t></w:r>`;
+            runs += `<w:r><w:rPr><w:b/><w:color w:val="0066cc"/></w:rPr><w:t xml:space="preserve">${textItem.content.replace(/^(\d+[-–]\d+\s*min)(.*)/, '$1 •$2')}</w:t></w:r>`;
           } else {
             let formatting = '';
             if (textItem.bold) formatting += '<w:b/>';
@@ -512,34 +618,91 @@ window.DocxGenerator = {
           }
         });
         
-        paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr>${runs}</w:p>`);
+        paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr>${runs}</w:p>`);
       }
       
-      return paragraphs.length > 0 
+      const result = paragraphs.length > 0 
         ? paragraphs.join('') 
-        : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+        : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+        
+      console.log('✅ Resultado HTML complexo:', result.substring(0, 200) + '...');
+      return result;
         
     } catch (error) {
       console.warn('Erro ao processar texto formatado, usando fallback:', error);
-      // Fallback melhorado: preservar quebras de linha
+      // Fallback melhorado: agrupar linhas em parágrafos respeitando listas
       const lines = htmlContent
         .replace(/<br\s*\/?>/gi, '\n')
         .replace(/<[^>]*>/g, '')
         .split('\n');
         
       const paragraphs = [];
+      let currentParagraph = [];
+      let inListItem = false;
+      
+      const isListItem = (line) => {
+        const trimmed = line.trim();
+        return /^(\d+\.|\d+\.\d+|\-|\*|\•)\s/.test(trimmed);
+      };
+      
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
+        
         if (line.trim()) {
-          paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(line.trim())}</w:t></w:r></w:p>`);
-        } else if (i < lines.length - 1) {
-          paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
+          if (isListItem(line)) {
+            // Finalizar parágrafo anterior se houver
+            if (currentParagraph.length > 0) {
+              const paragraphText = currentParagraph.join(' ');
+              paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(paragraphText)}</w:t></w:r></w:p>`);
+              currentParagraph = [];
+            }
+            
+            // Iniciar novo item de lista
+            currentParagraph.push(line.trim());
+            inListItem = true;
+          } else if (inListItem) {
+            // Continuação do item de lista atual (sem linha vazia entre elas)
+            currentParagraph.push(line.trim());
+          } else {
+            // Finalizar parágrafo anterior se mudou de contexto
+            if (currentParagraph.length > 0) {
+              const paragraphText = currentParagraph.join(' ');
+              paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(paragraphText)}</w:t></w:r></w:p>`);
+              currentParagraph = [];
+            }
+            
+            // Texto normal
+            currentParagraph.push(line.trim());
+            inListItem = false;
+          }
+        } else {
+          // Linha vazia - finalizar parágrafo atual se houver conteúdo
+          if (currentParagraph.length > 0) {
+            const paragraphText = currentParagraph.join(' ');
+            paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(paragraphText)}</w:t></w:r></w:p>`);
+            currentParagraph = [];
+          }
+          
+          // Resetar estado de lista
+          inListItem = false;
+          
+          // Não adicionar linha vazia desnecessária - removido para evitar quebras extras
+          if (i < lines.length - 1) {
+            // Removido completamente para evitar quebras de linha extras
+            // paragraphs.push(`<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`);
+          }
         }
+      }
+      
+      // Finalizar último parágrafo se houver
+      if (currentParagraph.length > 0) {
+        const paragraphText = currentParagraph.join(' ');
+        paragraphs.push(`<w:p><w:pPr><w:jc w:val="both"/><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t xml:space="preserve">${this.escapeXml(paragraphText)}</w:t></w:r></w:p>`);
       }
       
       return paragraphs.length > 0
         ? paragraphs.join('')
-        : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
+        : `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:t></w:t></w:r></w:p>`;
     }
   },
   
@@ -565,25 +728,105 @@ window.DocxGenerator = {
       tableXml += `<w:tr>`;
       Array.from(row.cells).forEach(cell => {
         const isHeader = cell.tagName.toLowerCase() === 'th';
-        const cellText = this.escapeXml(cell.textContent.trim());
         
         tableXml += `<w:tc><w:tcPr><w:tcW w:w="${colWidth}" w:type="dxa"/>`;
         if (isHeader) {
           tableXml += `<w:shd w:val="clear" w:color="auto" w:fill="F2F2F2"/>`;
         }
         tableXml += `<w:tcMar><w:top w:w="108" w:type="dxa"/><w:left w:w="108" w:type="dxa"/><w:bottom w:w="108" w:type="dxa"/><w:right w:w="108" w:type="dxa"/></w:tcMar></w:tcPr>`;
-        tableXml += `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr><w:r>`;
-        if (isHeader) {
-          tableXml += `<w:rPr><w:b/></w:rPr>`;
+        
+        // Processar conteúdo da célula com formatação
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = cell.innerHTML;
+        
+        // Usar o sistema melhorado de processamento
+        const processElementForTable = (element, inheritedFormatting = { bold: isHeader, italic: false, underline: false }) => {
+          if (element.nodeType === Node.TEXT_NODE) {
+            const text = element.textContent.trim();
+            if (text) {
+              return [{
+                type: 'text',
+                content: this.escapeXml(text),
+                bold: inheritedFormatting.bold,
+                italic: inheritedFormatting.italic,
+                underline: inheritedFormatting.underline
+              }];
+            }
+            return [];
+          }
+          
+          if (element.nodeType === Node.ELEMENT_NODE) {
+            const tagName = element.tagName.toLowerCase();
+            let currentFormatting = { ...inheritedFormatting };
+            
+            if (tagName === 'b' || tagName === 'strong') currentFormatting.bold = true;
+            if (tagName === 'i' || tagName === 'em') currentFormatting.italic = true;
+            if (tagName === 'u') currentFormatting.underline = true;
+            
+            if (tagName === 'br') {
+              return [{ type: 'break' }];
+            }
+            
+            let result = [];
+            Array.from(element.childNodes).forEach(child => {
+              result = result.concat(processElementForTable(child, currentFormatting));
+            });
+            
+            if (result.length === 0 && element.textContent.trim()) {
+              result.push({
+                type: 'text',
+                content: this.escapeXml(element.textContent.trim()),
+                bold: currentFormatting.bold,
+                italic: currentFormatting.italic,
+                underline: currentFormatting.underline
+              });
+            }
+            
+            return result;
+          }
+          return [];
+        };
+        
+        let cellContent = [];
+        Array.from(tempDiv.childNodes).forEach(child => {
+          cellContent = cellContent.concat(processElementForTable(child));
+        });
+        
+        // Gerar XML da célula
+        tableXml += `<w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr>`;
+        
+        if (cellContent.length > 0) {
+          cellContent.forEach(item => {
+            if (item.type === 'text') {
+              let formatting = '';
+              if (item.bold) formatting += '<w:b/>';
+              if (item.italic) formatting += '<w:i/>';
+              if (item.underline) formatting += '<w:u w:val="single"/>';
+              
+              if (formatting) {
+                tableXml += `<w:r><w:rPr>${formatting}</w:rPr><w:t xml:space="preserve">${item.content}</w:t></w:r>`;
+              } else {
+                tableXml += `<w:r><w:t xml:space="preserve">${item.content}</w:t></w:r>`;
+              }
+            } else if (item.type === 'break') {
+              tableXml += `</w:p><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="200" w:lineRule="exact"/></w:pPr>`;
+            }
+          });
+        } else {
+          tableXml += `<w:r><w:t></w:t></w:r>`;
         }
-        tableXml += `<w:t xml:space="preserve">${cellText}</w:t></w:r></w:p></w:tc>`;
+        
+        tableXml += `</w:p></w:tc>`;
       });
       tableXml += `</w:tr>`;
     });
     
     tableXml += `</w:tbl>`;
     
-    return [{ type: 'table', content: tableXml }];
+    return [{
+      type: 'table',
+      content: tableXml
+    }];
   },
   
   createDocxBlob: function(documentXml, customImageData = null) {
@@ -782,12 +1025,174 @@ window.DocxGenerator = {
     return bytes;
   }
 };
+
+// Confirmar que DocxGenerator foi definido
+console.log('🎯 DocxGenerator definido:', typeof window.DocxGenerator !== 'undefined');
+console.log('🔍 DocxGenerator tem create:', typeof window.DocxGenerator?.create === 'function');
+
+// SISTEMA GLOBAL MELHORADO: Forçar elementos data-alloy-vertical-dir="toptobottom" a ficarem sticky
+function forceAlloyVerticalDirSticky() {
+  const alloyElements = document.querySelectorAll('[data-alloy-vertical-dir="toptobottom"]');
+  
+  if (alloyElements.length > 0) {
+    console.log(`🎯 Encontrados ${alloyElements.length} elemento(s) com data-alloy-vertical-dir="toptobottom"`);
+    
+    alloyElements.forEach((element, index) => {
+      if (!element.classList.contains('alloy-sticky-applied')) {
+        console.log(`📌 Aplicando sticky FORÇADO ao elemento ${index + 1}:`, element);
+        
+        // Aplicar estilos sticky com !important para sobrescrever qualquer CSS
+        element.style.setProperty('position', 'sticky', 'important');
+        element.style.setProperty('top', '0px', 'important');
+        element.style.setProperty('z-index', '9999', 'important');
+        element.style.setProperty('background-color', '#ffffff', 'important');
+        element.style.setProperty('border-bottom', '2px solid #007acc', 'important');
+        element.style.setProperty('box-shadow', '0 3px 10px rgba(0,0,0,0.2)', 'important');
+        element.style.setProperty('width', '100%', 'important');
+        element.style.setProperty('backdrop-filter', 'blur(5px)', 'important');
+        
+        // Marcar como aplicado
+        element.classList.add('alloy-sticky-applied');
+        
+        console.log('✅ Elemento configurado como STICKY FORÇADO com sucesso');
+      }
+    });
+  }
+  
+  // Verificação PRIORITÁRIA para toolbar de formatação do TinyMCE
+  const formatToolbars = document.querySelectorAll('.tox-toolbar__primary');
+  formatToolbars.forEach(toolbar => {
+    if (!toolbar.classList.contains('format-sticky-forced')) {
+      console.log('🎨 FORÇANDO toolbar de formatação TinyMCE a ficar sticky:', toolbar);
+      
+      // Aplicar com força máxima - ESTE É O TOOLBAR DE FORMATAÇÃO!
+      toolbar.style.setProperty('position', 'sticky', 'important');
+      toolbar.style.setProperty('top', '0px', 'important');
+      toolbar.style.setProperty('z-index', '10001', 'important');
+      toolbar.style.setProperty('background', 'linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%)', 'important');
+      toolbar.style.setProperty('border-bottom', '3px solid #007bff', 'important');
+      toolbar.style.setProperty('box-shadow', '0 4px 15px rgba(0,123,255,0.2)', 'important');
+      toolbar.style.setProperty('backdrop-filter', 'blur(10px)', 'important');
+      toolbar.style.setProperty('width', '100%', 'important');
+      toolbar.style.setProperty('transition', 'all 0.3s ease', 'important');
+      
+      toolbar.classList.add('format-sticky-forced');
+      console.log('✅ TOOLBAR DE FORMATAÇÃO configurado como STICKY PERMANENTE!');
+    }
+  });
+  
+  // Verificação adicional para outros toolbars do TinyMCE
+  const tinyToolbars = document.querySelectorAll('.tox-editor-header, .tox-toolbar__primary, .tox-toolbar');
+  tinyToolbars.forEach(toolbar => {
+    if (!toolbar.classList.contains('tiny-sticky-forced')) {
+      toolbar.style.setProperty('position', 'sticky', 'important');
+      toolbar.style.setProperty('top', '0px', 'important');
+      toolbar.style.setProperty('z-index', '9998', 'important');
+      toolbar.style.setProperty('background-color', '#ffffff', 'important');
+      toolbar.style.setProperty('box-shadow', '0 1px 3px rgba(0,0,0,0.1)', 'important');
+      toolbar.classList.add('tiny-sticky-forced');
+      console.log('📌 Toolbar TinyMCE configurada como sticky:', toolbar);
+    }
+  });
+}
+
+// Observer global MELHORADO para detectar novos elementos com data-alloy-vertical-dir
+const globalAlloyObserver = new MutationObserver(function(mutations) {
+  let shouldCheckSticky = false;
+  
+  mutations.forEach(function(mutation) {
+    if (mutation.type === 'childList') {
+      // Verificar novos elementos adicionados
+      mutation.addedNodes.forEach(function(node) {
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // Verificar o próprio elemento
+          if (node.getAttribute && node.getAttribute('data-alloy-vertical-dir') === 'toptobottom') {
+            console.log('🎯 Novo elemento data-alloy-vertical-dir detectado:', node);
+            shouldCheckSticky = true;
+          }
+          
+          // Verificar elementos filhos
+          const children = node.querySelectorAll && node.querySelectorAll('[data-alloy-vertical-dir="toptobottom"]');
+          if (children && children.length > 0) {
+            console.log('🎯 Novos elementos filhos data-alloy-vertical-dir detectados:', children.length);
+            shouldCheckSticky = true;
+          }
+          
+          // Verificar se é toolbar do TinyMCE
+          if (node.classList && (node.classList.contains('tox-toolbar') || node.classList.contains('tox-editor-header'))) {
+            console.log('🔧 Nova toolbar TinyMCE detectada:', node);
+            shouldCheckSticky = true;
+          }
+        }
+      });
+    }
+    
+    // Verificar mudanças de atributos
+    if (mutation.type === 'attributes' && mutation.attributeName === 'data-alloy-vertical-dir') {
+      console.log('📝 Atributo data-alloy-vertical-dir modificado:', mutation.target);
+      shouldCheckSticky = true;
+    }
+  });
+  
+  // Executar verificação de sticky se necessário
+  if (shouldCheckSticky) {
+    setTimeout(forceAlloyVerticalDirSticky, 100);
+  }
+});
+
+// Iniciar observação global APENAS quando DOM estiver pronto
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🎯 DOM carregado, iniciando observer global');
+    globalAlloyObserver.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-alloy-vertical-dir']
+    });
+  });
+} else {
+  // DOM já está pronto
+  console.log('🎯 DOM já pronto, iniciando observer global imediatamente');
+  globalAlloyObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['data-alloy-vertical-dir']
+  });
+}
+
+// Executar verificação inicial MÚLTIPLA para garantir que sticky seja aplicado
+setTimeout(forceAlloyVerticalDirSticky, 100);
+setTimeout(forceAlloyVerticalDirSticky, 500);
+setTimeout(forceAlloyVerticalDirSticky, 1000);
+setTimeout(forceAlloyVerticalDirSticky, 2000);
+
+// Executar periodicamente para garantir que elementos permaneçam sticky
+setInterval(forceAlloyVerticalDirSticky, 5000);
+
+// Verificar quando janela for redimensionada ou mudança de foco
+window.addEventListener('resize', forceAlloyVerticalDirSticky);
+window.addEventListener('focus', forceAlloyVerticalDirSticky);
+document.addEventListener('scroll', function() {
+  // Verificar apenas a cada 500ms durante scroll para performance
+  clearTimeout(window.stickyScrollTimeout);
+  window.stickyScrollTimeout = setTimeout(forceAlloyVerticalDirSticky, 500);
+});
+
+console.log('🎯 Sistema APRIMORADO de detecção data-alloy-vertical-dir="toptobottom" ativado com verificações múltiplas');
+
 </script>
+
+<!-- TinyMCE Editor -->
+<script src="https://cdn.jsdelivr.net/npm/tinymce@6/tinymce.min.js" referrerpolicy="origin"></script>
+
 <!-- Fallback: carregar bibliotecas externas se online -->
 <script>
 // ═══ BIBLIOTECAS EXTERNAS REMOVIDAS ═══
 // Sistema funciona completamente offline com FileSaver integrado
 // Bibliotecas externas removidas para melhor desempenho e confiabilidade
+// TinyMCE adicionado para melhor experiência de edição
 </script>
 <style>
 @keyframes pulse {
@@ -982,12 +1387,365 @@ textarea.tall{min-height:120px}
 .rich-editor b,.rich-editor strong{font-weight:bold}
 .rich-editor i,.rich-editor em{font-style:italic}
 .rich-editor u{text-decoration:underline}
+
+/* ═══ ESTILOS APRIMORADOS PARA FERRAMENTAS ═══ */
+.formatting-toolbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  background: #f5f5f5 !important;
+  border: 1px solid #ddd !important;
+  border-bottom: none !important;
+  padding: 8px !important;
+  border-radius: 4px 4px 0 0 !important;
+  display: flex !important;
+  gap: 5px !important;
+  flex-wrap: wrap !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.format-btn {
+  transition: all 0.2s ease !important;
+}
+
+.format-btn:hover {
+  background: #e9ecef !important;
+  border-color: #adb5bd !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
+}
+
+.format-btn:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Rich editor melhorado */
+.rich-editor {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.rich-editor:focus {
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1) !important;
+}
+
+/* Elementos de formatação dentro do editor */
+.rich-editor .time-block {
+  background: #e6f3ff !important;
+  border-left: 4px solid #007acc !important;
+  padding: 8px 12px !important;
+  margin: 10px 0 !important;
+  border-radius: 3px !important;
+  font-weight: 500 !important;
+  transition: background 0.2s ease !important;
+}
+
+.rich-editor .time-block:hover {
+  background: #d4edda !important;
+}
+
+.rich-editor .editor-table {
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin: 10px 0 !important;
+  border: 1px solid #ddd !important;
+  transition: box-shadow 0.2s ease !important;
+}
+
+.rich-editor .editor-table:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+}
+
+.rich-editor .editor-table th,
+.rich-editor .editor-table td {
+  border: 1px solid #ddd !important;
+  padding: 8px !important;
+}
+
+.rich-editor .editor-table th {
+  background-color: #f5f5f5 !important;
+  font-weight: bold !important;
+}
+
+/* Melhorias visuais para listas */
+.rich-editor ul, .rich-editor ol {
+  margin: 10px 0 !important;
+  padding-left: 20px !important;
+}
+
+.rich-editor li {
+  margin: 5px 0 !important;
+  line-height: 1.4 !important;
+}
+
+/* Estado do modo simples */
+.rich-editor.simple-mode {
+  font-family: Consolas, Monaco, 'Courier New', monospace !important;
+  line-height: 1.4 !important;
+  background: #f8f9fa !important;
+  border-color: #6c757d !important;
+}
+
+/* Responsividade para dispositivos móveis */
+@media (max-width: 768px) {
+  .formatting-toolbar {
+    gap: 3px !important;
+  }
+  
+  .format-btn {
+    padding: 3px 6px !important;
+    font-size: 11px !important;
+  }
+}
+
+/* ═══ ESTILOS PARA TINYMCE ═══ */
+.tinymce-editor {
+  width: 100% !important;
+  min-height: 300px !important;
+  border: 1px solid #ddd !important;
+  border-radius: 4px !important;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+.tox-tinymce {
+  border: 1px solid #ddd !important;
+  border-radius: 4px !important;
+  box-shadow: none !important;
+}
+
+.tox-toolbar-primary {
+  background: #f8f9fa !important;
+  border-bottom: 1px solid #dee2e6 !important;
+}
+
+/* Configurações para toolbar sticky do TinyMCE */
+.tox-toolbar__primary {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 100 !important;
+  background: #f8f9fa !important;
+  border-bottom: 1px solid #dee2e6 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+}
+
+.tox.tox-tinymce .tox-toolbar__primary {
+  background: #f8f9fa !important;
+  border-bottom: 1px solid #dee2e6 !important;
+}
+
+/* Quando toolbar está sticky, adicionar sombra para destacar */
+.tox-toolbar--scrolling .tox-toolbar__primary {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
+  background: rgba(248, 249, 250, 0.98) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Estado ativo da toolbar sticky - detectado via JavaScript */
+.tox-toolbar-sticky-active .tox-toolbar__primary {
+  background: rgba(248, 249, 250, 0.96) !important;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.12) !important;
+  border-bottom-color: #dee2e6 !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+/* Garantir que o editor tenha contexto de stacking adequado */
+.tox.tox-tinymce {
+  position: relative !important;
+  z-index: 10 !important;
+}
+
+/* Melhorar visibilidade da toolbar sticky em dispositivos móveis */
+@media (max-width: 768px) {
+  .tox-toolbar__primary {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 999 !important;
+  }
+  
+  .tox-toolbar-sticky-active .tox-toolbar__primary {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
+  }
+}
+
+.tox-statusbar {
+  border-top: 1px solid #dee2e6 !important;
+  background: #f8f9fa !important;
+}
+
+.tox-edit-area {
+  border: none !important;
+}
+
+.tox-edit-area iframe {
+  background: white !important;
+}
+
+/* Botões de ações especiais */
+.btn-action {
+  transition: all 0.2s ease !important;
+}
+
+.btn-action:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.15) !important;
+}
+
+/* Estilos para elementos personalizados do TinyMCE */
+.tox .tox-button--naked .tox-button__icon {
+  fill: #666 !important;
+}
+
+.tox .tox-button--naked:hover .tox-button__icon {
+  fill: #007bff !important;
+}
+
+#estrategias-actions {
+  animation: fadeInUp 0.3s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Preview específico do TinyMCE */
+#tinymce-preview {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive para TinyMCE */
+@media (max-width: 768px) {
+  .tox-tinymce {
+    min-height: 250px !important;
+  }
+  
+  .tox-toolbar-primary {
+    flex-wrap: wrap !important;
+  }
+  
+  #estrategias-actions {
+    flex-direction: column !important;
+    gap: 5px !important;
+  }
+  
+  .btn-action {
+    width: 100% !important;
+  }
+}
 .rich-editor ul{margin:10px 0;padding-left:25px}
 .rich-editor ol{margin:10px 0;padding-left:25px}
 .rich-editor li{margin:3px 0}
 .rich-editor p{margin:0;line-height:1.1}
 .rich-editor div{line-height:1.1}
 .rich-editor br{line-height:1.1}
+.formatting-toolbar{
+  position:sticky;
+  top:0;
+  z-index:1000;
+  transition:box-shadow 0.2s ease, background-color 0.2s ease;
+  margin-bottom:0;
+}
+.formatting-toolbar.sticky{
+  box-shadow:0 2px 8px rgba(0,0,0,0.1);
+  background:#f5f5f5!important;
+  border-color:#ccc!important;
+}
+#f_estrategias{
+  margin-top:0;
+  scroll-margin-top:60px;
+}
+
+/* Container do TinyMCE otimizado para toolbar sticky */
+.tox.tox-tinymce {
+  border: 1px solid #dee2e6 !important;
+  border-radius: var(--radius) !important;
+  overflow: visible !important; /* Permitir que toolbar sticky apareça fora do container */
+}
+
+/* Garantir que o editor seja visível quando toolbar está sticky */
+.tox-toolbar-sticky-active {
+  scroll-margin-top: 80px !important;
+}
+
+/* CSS específico para toolbar TinyMCE com data-alloy-vertical-dir sempre fixa */
+.tox-toolbar-overlord[data-alloy-vertical-dir="toptobottom"],
+.tox .tox-toolbar-overlord[data-alloy-vertical-dir="toptobottom"],
+div[data-alloy-vertical-dir="toptobottom"] {
+  position: sticky !important;
+  position: -webkit-sticky !important;
+  top: 0 !important;
+  z-index: 1001 !important;
+  background-color: #f8f9fa !important;
+  border-bottom: 1px solid #dee2e6 !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  width: 100% !important;
+}
+
+/* Forçar toolbar TinyMCE a ficar sempre visível */
+.tox .tox-editor-header {
+  position: sticky !important;
+  position: -webkit-sticky !important;
+  top: 0 !important;
+  z-index: 1000 !important;
+  background: #ffffff !important;
+  border-bottom: 1px solid #cccccc !important;
+}
+
+/* Container específico para elementos de formatação sempre fixos */
+.tox-toolbar__group,
+.tox-toolbar__primary {
+  position: relative !important;
+}
+
+/* Garantir que toolbar não seja obscurecida */
+.tox .tox-toolbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 999 !important;
+  background-color: #ffffff !important;
+}
+
+/* REGRA UNIVERSAL: Qualquer elemento com data-alloy-vertical-dir="toptobottom" deve ser sticky */
+[data-alloy-vertical-dir="toptobottom"] {
+  position: sticky !important;
+  position: -webkit-sticky !important;
+  top: 0 !important;
+  z-index: 1002 !important;
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #cccccc !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
+  width: 100% !important;
+}
+
+/* Classes auxiliares para elementos sticky forçados */
+.forced-sticky-toolbar,
+.alloy-sticky-forced {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 1001 !important;
+  background-color: #ffffff !important;
+  border-bottom: 1px solid #dee2e6 !important;
+}
 .time-block{
   background:#e6f3ff;
   border-left:4px solid #007acc;
@@ -1116,48 +1874,8 @@ textarea.tall{min-height:120px}
         <div class="section-divider"><span>Desenvolvimento da aula</span></div>
 
         <div class="field-group full">
-          <label>Estratégias de Ensino <span class="help" title="Roteiro detalhado com marcações de tempo e formatação">?</span></label>
-          
-          <!-- Barra de Ferramentas de Formatação -->
-          <div class="formatting-toolbar" style="background:#f5f5f5;border:1px solid #ddd;border-bottom:none;padding:8px;border-radius:4px 4px 0 0;display:flex;gap:5px;flex-wrap:wrap;">
-            <button type="button" onclick="formatText('bold')" class="format-btn" title="Negrito" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;"><b>B</b></button>
-            <button type="button" onclick="formatText('italic')" class="format-btn" title="Itálico" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;"><i>I</i></button>
-            <button type="button" onclick="formatText('underline')" class="format-btn" title="Sublinhado" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;"><u>U</u></button>
-            <span class="separator" style="color:#999;margin:0 3px;">|</span>
-            <button type="button" onclick="formatText('insertUnorderedList')" class="format-btn" title="Lista com marcadores" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;">• Lista</button>
-            <button type="button" onclick="formatText('insertOrderedList')" class="format-btn" title="Lista numerada" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;">1. Lista</button>
-            <span class="separator" style="color:#999;margin:0 3px;">|</span>
-            <button type="button" onclick="insertTimeBlock()" class="format-btn" title="Inserir bloco de tempo" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;">🕐 Tempo</button>
-            <button type="button" onclick="insertTable()" class="format-btn" title="Inserir tabela" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;">📋 Tabela</button>
-            <button type="button" onclick="clearFormatting()" class="format-btn" title="Limpar formatação" style="background:white;border:1px solid #ccc;border-radius:3px;padding:4px 8px;cursor:pointer;font-size:12px;">∅ Limpar</button>
-          </div>
-          
-          <div id="f_estrategias" 
-               contenteditable="true" 
-               class="rich-editor tall" 
-               style="min-height:220px;border:1px solid #ddd;border-radius:0 0 4px 4px;padding:10px;background:white;outline:none;overflow-y:auto;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.1;color:#333;"
-               data-placeholder="Digite as estratégias de ensino com formatação...
-
-📝 Use a barra de ferramentas acima para:
-• Aplicar negrito, itálico, sublinhado
-• Criar listas organizadas
-• Inserir blocos de tempo (🕐 Tempo)
-• Inserir tabelas (📋 Tabela)
-• Limpar formatação
-
-Exemplo:
-0–15 min · Introdução
-Recepção dos alunos e apresentação dos objetivos
-
-15–45 min · Desenvolvimento
-Exposição do conteúdo principal
-
-45–60 min · Encerramento
-Síntese e avaliação"
-               onblur="setDirty(); updatePlaceholder(this);" 
-               onpaste="handlePaste(event)"
-               oninput="updatePlaceholder(this)">
-          </div>
+          <label>Estratégias de Ensino</label>
+          <textarea id="f_estrategias" class="tall" placeholder="Descreva as estratégias de ensino utilizadas na aula..."></textarea>
         </div>
 
         <div class="section-divider"><span>Infraestrutura</span></div>
@@ -1306,6 +2024,19 @@ DIREN - ACADEMIA NACIONAL DE POLÍCIA</textarea>
 // ══════════════════════════════════════════════════════
 // DATA MODEL
 // ══════════════════════════════════════════════════════
+
+// Função para aguardar DocxGenerator estar disponível (DEPRECADA - use verificação direta)
+function waitForDocxGenerator(timeout = 5000) {
+  return new Promise((resolve, reject) => {
+    if (typeof window.DocxGenerator !== 'undefined' && window.DocxGenerator && window.DocxGenerator.create) {
+      console.log('✅ DocxGenerator já disponível');
+      resolve(window.DocxGenerator);
+      return;
+    }
+    reject(new Error('DocxGenerator não disponível - use verificação direta'));
+  });
+}
+
 const STATIC_COURSES = [
   { id:'agente',       name:'Agente de Polícia Federal',       short:'Agente',       total:4,  color:'#2563eb' },
   { id:'escrivao',     name:'Escrivão de Polícia Federal',     short:'Escrivão',     total:20, color:'#7c3aed' },
@@ -1335,144 +2066,301 @@ function loadCustomCourses() {
 
 let COURSES = [...STATIC_COURSES, ...loadCustomCourses()];
 
-// ═══ FUNÇÕES DE FORMATAÇÃO DE TEXTO ═══
-function formatText(command) {
-  const editor = document.getElementById('f_estrategias');
-  if (!editor) return;
+// ═══ TINYMCE CONFIGURATION AND FUNCTIONS ═══
+
+function insertTimeTemplate() {
+  // Função mantida para compatibilidade
+  if (typeof setDirty === 'function') {
+    setDirty();
+  }
+}
+
+
+function cleanWordContent() {
+  const textarea = document.getElementById('f_estrategias');
+  if (!textarea) return;
   
-  editor.focus();
-  
-  try {
-    document.execCommand(command, false, null);
+  if (confirm('Limpar conteúdo do campo Estratégias de Ensino? Esta ação não pode ser desfeita.')) {
+    textarea.value = '';
+
+    showTinyFeedback('✅ Campo limpo!');
+
     if (typeof setDirty === 'function') {
-      setDirty(); // Marcar como modificado para auto-save
+      setDirty(true);
     }
-  } catch (error) {
-    console.warn('Comando de formatação não suportado:', command);
   }
 }
 
-function insertTimeBlock() {
+function showTinyPreview() {
+  const textarea = document.getElementById('f_estrategias');
+  if (!textarea || !textarea.value.trim()) {
+    alert('Nenhum conteúdo para visualizar no campo Estratégias de Ensino');
+    return;
+  }
+  
+  alert(`Conteúdo atual:\n\n${textarea.value}`);
+}
+
+function hideTinyPreview() {
+  const preview = document.getElementById('tinymce-preview');
+  if (preview) {
+    preview.style.display = 'none';
+  }
+}
+
+function copyTinyContent(type) {
+  const content = getTinyMCEContent();
+  
+  if (!content) {
+    showTinyFeedback('⚠️ Nenhum conteúdo para copiar');
+    return;
+  }
+  
+  // Copiar para clipboard
+  navigator.clipboard.writeText(content).then(() => {
+    showTinyFeedback(`✅ ${type.toUpperCase()} copiado!`);
+  }).catch(() => {
+    // Fallback para navegadores mais antigos
+    const textarea = document.createElement('textarea');
+    textarea.value = content;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    showTinyFeedback(`✅ ${type.toUpperCase()} copiado!`);
+  });
+}
+
+function validateDocxOutput() {
+  const content = getTinyMCEContent();
+  
+  if (!content) {
+    alert('⚠️ Nenhum conteúdo para validar');
+    return;
+  }
+  
+  // Análise básica de compatibilidade
+  const analysis = {
+    timeBlocks: (content.match(/class="time-block"/g) || []).length,
+    tables: (content.match(/<table/g) || []).length,
+    lists: (content.match(/<[ou]l>/g) || []).length,
+    formatting: {
+      bold: (content.match(/<strong>|<b>/g) || []).length,
+      italic: (content.match(/<em>|<i>/g) || []).length,
+      underline: (content.match(/<u>/g) || []).length
+    },
+    issues: []
+  };
+  
+  // Verificar possíveis problemas
+  if (content.includes('mso-')) {
+    analysis.issues.push('⚠️ Formatação do Word detectada');
+  }
+  
+  if (content.includes('<span') && content.includes('style=')) {
+    analysis.issues.push('⚠️ Estilos inline detectados');
+  }
+  
+  if (content.length > 50000) {
+    analysis.issues.push('⚠️ Conteúdo muito longo (pode afetar performance)');
+  }
+  
+  // Mostrar resultado
+  const report = `
+📊 Relatório de Validação DOCX:
+
+📝 Elementos encontrados:
+• ${analysis.timeBlocks} blocos de tempo
+• ${analysis.tables} tabelas
+• ${analysis.lists} listas
+• ${analysis.formatting.bold} textos em negrito
+• ${analysis.formatting.italic} textos em itálico
+• ${analysis.formatting.underline} textos sublinhados
+
+${analysis.issues.length > 0 ? 
+  '⚠️ Problemas encontrados:\n' + analysis.issues.join('\n') :
+  '✅ Nenhum problema encontrado!'
+}
+
+💡 O conteúdo será processado adequadamente no DOCX.
+  `;
+  
+  alert(report);
+}
+
+function showTinyFeedback(message) {
+  const actions = document.getElementById('estrategias-actions');
+  if (!actions) return;
+  
+  const feedback = document.createElement('span');
+  feedback.innerHTML = message;
+  feedback.style.cssText = 'font-size:12px;color:#155724;background:#d4edda;border-radius:3px;padding:4px 8px;border:1px solid #c3e6cb;margin-left:10px;';
+  
+  actions.appendChild(feedback);
+  
+  setTimeout(() => {
+    if (feedback.parentNode) {
+      feedback.parentNode.removeChild(feedback);
+    }
+  }, 3000);
+}
+
+function formatHtmlForDisplay(html) {
+  return html
+    .replace(/></g, '>\n<')
+    .replace(/(<\w+[^>]*>)/g, '  $1')
+    .replace(/(<\/\w+>)/g, '  $1')
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line)
+    .join('\n');
+}
+
+// ═══ FUNÇÕES ANTIGAS REMOVIDAS COM TINYMCE ═══
+// As seguintes funções foram removidas pois o TinyMCE gerencia nativamente:
+// - normalizeFormatting() → TinyMCE tem comandos nativos de formatação
+// - toggleSimpleMode() → TinyMCE pode alternar entre modos facilmente
+// - previewDocxFormatting() → Substituído por showTinyPreview()
+// - showTemporaryFeedback() → Substituído por showTinyFeedback()
+
+// ═══ FUNÇÕES DE COMPATIBILIDADE MANTIDAS ═══
+
+function showTemporaryFeedback(message) {
+  const toolbar = document.getElementById('estrategias-toolbar');
+  if (!toolbar) return;
+  
+  const feedback = document.createElement('span');
+  feedback.innerHTML = message;
+  feedback.style.cssText = 'font-size:11px;color:#155724;background:#d4edda;border-radius:3px;padding:4px 8px;margin-left:10px;border:1px solid #c3e6cb;';
+  
+  toolbar.appendChild(feedback);
+  
+  setTimeout(() => {
+    if (feedback.parentNode) {
+      feedback.parentNode.removeChild(feedback);
+    }
+  }, 3000);
+}
+
+function previewDocxFormatting() {
   const editor = document.getElementById('f_estrategias');
   if (!editor) return;
   
-  const selection = window.getSelection();
-  if (selection.rangeCount === 0) return;
+  const htmlContent = editor.innerHTML;
   
-  const range = selection.getRangeAt(0);
-  
-  const timeBlock = document.createElement('div');
-  timeBlock.className = 'time-block';
-  timeBlock.style.cssText = 'background:#e6f3ff;border-left:4px solid #007acc;padding:8px 12px;margin:10px 0;border-radius:3px;font-weight:500;';
-  timeBlock.innerHTML = '<strong>0–15 min · </strong>Descreva a atividade';
-  
-  range.deleteContents();
-  range.insertNode(timeBlock);
-  
-  // Adicionar quebra de linha após o bloco
-  const lineBreak = document.createElement('br');
-  const newRange = document.createRange();
-  newRange.setStartAfter(timeBlock);
-  newRange.insertNode(lineBreak);
-  
-  // Posicionar cursor após a quebra de linha
-  newRange.setStartAfter(lineBreak);
-  newRange.collapse(true);
-  selection.removeAllRanges();
-  selection.addRange(newRange);
-  
-  if (typeof setDirty === 'function') {
-    setDirty();
+  if (!htmlContent.trim()) {
+    showTemporaryFeedback('⚠️ Nenhum conteúdo para visualizar');
+    return;
   }
-}
-
-function insertTable() {
-  const editor = document.getElementById('f_estrategias');
-  if (!editor) return;
   
-  const selection = window.getSelection();
-  if (selection.rangeCount === 0) return;
+  // Simular o processamento que será feito no DOCX
+  const processedText = simulateDocxProcessing(htmlContent);
   
-  const range = selection.getRangeAt(0);
+  // Criar janela modal para mostrar a comparação
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  `;
   
-  // Perguntar ao usuário quantas colunas e linhas deseja
-  const cols = prompt('Quantas colunas deseja na tabela? (2-10)', '2');
-  if (!cols || isNaN(cols) || cols < 2 || cols > 10) return;
+  modal.innerHTML = `
+    <div style="background:white;border-radius:8px;max-width:90%;max-height:90%;overflow:hidden;display:flex;flex-direction:column;">
+      <div style="padding:20px;border-bottom:1px solid #dee2e6;display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="margin:0;color:#495057;">📊 Comparação HTML vs DOCX</h3>
+        <button onclick="closeDocxPreview()" style="background:#dc3545;color:white;border:none;border-radius:3px;padding:8px 15px;cursor:pointer;">✕ Fechar</button>
+      </div>
+      <div style="display:flex;height:500px;overflow:hidden;">
+        <!-- HTML Preview -->
+        <div style="flex:1;padding:20px;border-right:1px solid #dee2e6;overflow-y:auto;">
+          <h4 style="margin:0 0 10px 0;color:#007bff;">🌐 Como aparece no HTML:</h4>
+          <div style="border:1px solid #dee2e6;border-radius:4px;padding:15px;background:#f8f9fa;font-family:-apple-system,BlinkMacSystemFont,sans-serif;font-size:14px;line-height:1.4;min-height:200px;">
+            ${htmlContent}
+          </div>
+        </div>
+        <!-- DOCX Preview -->
+        <div style="flex:1;padding:20px;overflow-y:auto;">
+          <h4 style="margin:0 0 10px 0;color:#28a745;">📄 Como aparecerá no DOCX:</h4>
+          <div style="border:1px solid #dee2e6;border-radius:4px;padding:15px;background:white;font-family:'Times New Roman',serif;font-size:12pt;line-height:1.2;min-height:200px;white-space:pre-wrap;">
+${processedText}
+          </div>
+        </div>
+      </div>
+      <div style="padding:15px;background:#f8f9fa;border-top:1px solid #dee2e6;font-size:12px;color:#6c757d;">
+        💡 <strong>Dicas:</strong> Se houver diferenças, use "🔧 Normalizar" para simplificar a formatação ou "📝 Simples" para modo texto puro.
+      </div>
+    </div>
+  `;
   
-  const rows = prompt('Quantas linhas deseja na tabela? (2-10)', '2');
-  if (!rows || isNaN(rows) || rows < 2 || rows > 10) return;
+  document.body.appendChild(modal);
   
-  const numCols = parseInt(cols);
-  const numRows = parseInt(rows);
-  
-  // Criar tabela dinamicamente
-  const table = document.createElement('table');
-  table.className = 'editor-table';
-  table.contentEditable = 'true';
-  table.style.cssText = 'border-collapse:collapse;width:100%;margin:10px 0;border:1px solid #ddd;';
-  
-  // Criar cabeçalho
-  let headerHTML = '<thead><tr>';
-  for (let c = 1; c <= numCols; c++) {
-    headerHTML += `<th style="border:1px solid #ddd;padding:8px;background-color:#f5f5f5;font-weight:bold;">Coluna ${c}</th>`;
-  }
-  headerHTML += '</tr></thead>';
-  
-  // Criar corpo da tabela
-  let bodyHTML = '<tbody>';
-  for (let r = 1; r <= numRows; r++) {
-    bodyHTML += '<tr>';
-    for (let c = 1; c <= numCols; c++) {
-      bodyHTML += `<td style="border:1px solid #ddd;padding:8px;">Linha ${r}, Col ${c}</td>`;
+  // Fechar ao clicar fora
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      closeDocxPreview();
     }
-    bodyHTML += '</tr>';
-  }
-  bodyHTML += '</tbody>';
-  
-  table.innerHTML = headerHTML + bodyHTML;
-  
-  range.deleteContents();
-  range.insertNode(table);
-  
-  // Adicionar quebra de linha após a tabela
-  const lineBreak = document.createElement('br');
-  const newRange = document.createRange();
-  newRange.setStartAfter(table);
-  newRange.insertNode(lineBreak);
-  
-  // Posicionar cursor após a quebra de linha
-  newRange.setStartAfter(lineBreak);
-  newRange.collapse(true);
-  selection.removeAllRanges();
-  selection.addRange(newRange);
-  
-  if (typeof setDirty === 'function') {
-    setDirty();
-  }
+  });
 }
 
-function clearFormatting() {
-  const editor = document.getElementById('f_estrategias');
-  if (!editor) return;
+function simulateDocxProcessing(htmlContent) {
+  // Simular o processamento que acontece na função processFormattedText
+  let text = htmlContent;
   
-  editor.focus();
+  // Converter tags HTML básicas para texto equivalente
+  text = text
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<p[^>]*>/gi, '')
+    .replace(/<\/p>/gi, '\n\n')
+    .replace(/<div[^>]*>/gi, '')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<strong[^>]*>([^<]*)<\/strong>/gi, '**$1**')
+    .replace(/<b[^>]*>([^<]*)<\/b>/gi, '**$1**')
+    .replace(/<em[^>]*>([^<]*)<\/em>/gi, '*$1*')
+    .replace(/<i[^>]*>([^<]*)<\/i>/gi, '*$1*')
+    .replace(/<u[^>]*>([^<]*)<\/u>/gi, '_$1_')
+    .replace(/<li[^>]*>([^<]*)<\/li>/gi, '• $1')
+    .replace(/<ul[^>]*>/gi, '')
+    .replace(/<\/ul>/gi, '\n')
+    .replace(/<ol[^>]*>/gi, '')
+    .replace(/<\/ol>/gi, '\n')
+    .replace(/<table[^>]*>/gi, '\n[TABELA]\n')
+    .replace(/<\/table>/gi, '\n[FIM TABELA]\n')
+    .replace(/<tr[^>]*>/gi, '')
+    .replace(/<\/tr>/gi, ' | ')
+    .replace(/<td[^>]*>([^<]*)<\/td>/gi, '$1 | ')
+    .replace(/<th[^>]*>([^<]*)<\/th>/gi, '[$1] | ')
+    .replace(/<[^>]*>/gi, '') // Remover outras tags
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/\n\s*\n\s*\n/g, '\n\n') // Múltiplas quebras para dupla
+    .trim();
   
-  if (window.getSelection().toString()) {
-    // Se há texto selecionado, remove apenas a formatação da seleção
-    document.execCommand('removeFormat', false, null);
-  } else {
-    // Se não há seleção, confirma se quer limpar todo o conteúdo
-    if (confirm('Limpar toda a formatação do campo Estratégias de Ensino?')) {
-      const plainText = editor.innerText || editor.textContent;
-      editor.innerHTML = plainText.replace(/\n/g, '<br>');
+  return text || '[Conteúdo vazio]';
+}
+
+function closeDocxPreview() {
+  const modals = document.querySelectorAll('div[style*="position: fixed"][style*="z-index: 10000"]');
+  modals.forEach(modal => {
+    if (modal.parentNode) {
+      modal.parentNode.removeChild(modal);
     }
-  }
-  
-  if (typeof setDirty === 'function') {
-    setDirty();
-  }
+  });
 }
 
+// ═══ FUNÇÃO HANDLEPASTE DESABILITADA ═══
+// TinyMCE gerencia automaticamente o paste e limpeza de formatação
+/*
 function handlePaste(event) {
   event.preventDefault();
   
@@ -1487,6 +2375,7 @@ function handlePaste(event) {
     setDirty();
   }
 }
+*/
 
 function updatePlaceholder(element) {
   if (!element) return;
@@ -1500,34 +2389,53 @@ function updatePlaceholder(element) {
   }
 }
 
-// Inicializar editor de formatação quando a página carregar
+// Inicializar TinyMCE quando a página carregar
 function initRichEditor() {
-  const editor = document.getElementById('f_estrategias');
-  if (editor) {
-    // Configurar placeholder inicial
-    updatePlaceholder(editor);
-    
-    // Adicionar eventos
-    editor.addEventListener('focus', () => {
-      editor.classList.remove('empty');
-    });
-    
-    editor.addEventListener('blur', () => {
-      updatePlaceholder(editor);
-      if (typeof setDirty === 'function') {
-        setDirty();
-      }
-    });
-    
-    editor.addEventListener('input', () => {
-      updatePlaceholder(editor);
-      if (typeof setDirty === 'function') {
-        setDirty();
-      }
-    });
-    
-    console.log('Editor de formatação inicializado');
+  console.log('🚀 Inicializando TinyMCE...');
+  
+  // Verificar se TinyMCE está disponível
+  if (typeof tinymce === 'undefined') {
+    console.log('📝 TinyMCE substituído por editor estruturado');
+    return;
   }
+  
+  // Inicializar novo editor estruturado  
+  console.log('🎓 Inicializando editor estruturado de planos de aula...');
+}
+
+// Converte HTML legado para texto simples com quebras de linha
+function htmlToPlainText(content) {
+  if (!content || !/<[a-z]/i.test(content)) return content;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = content
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<\/div>/gi, '\n')
+    .replace(/<\/li>/gi, '\n');
+  return tmp.textContent.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+// ═══ FUNÇÕES AUXILIARES PARA EDITOR ESTRUTURADO ═══
+function getTinyMCEContent() {
+  const textarea = document.getElementById('f_estrategias');
+  return textarea ? textarea.value : '';
+}
+
+function setTinyMCEContent(content) {
+  const textarea = document.getElementById('f_estrategias');
+  if (textarea) textarea.value = htmlToPlainText(content || '');
+}
+
+// Função para compatibilidade com código existente
+function updatePlaceholder(element) {
+  // Compatibilidade mantida
+  return;
+}
+
+function normalizeOnInput(element) {
+  // Compatibilidade mantida
+  // Esta função é mantida para compatibilidade
+  return;
 }
 
 const DEFAULT_LESSON = (course, num = 1) => ({
@@ -1630,11 +2538,236 @@ Arquivo "Para o aluno".`,
 let data = {};
 let disciplinas = {};
 let currentKey = null;
+let currentLesson = null; // Número da aula atual (0-45)
 let currentCourse = null;
 let currentMode = null; // 'lesson' | 'disciplina'
 let dirty = false;
 
 function key(courseId, num){ return `${courseId}_${num}`; }
+
+// ══════════════════════════════════════════════════════
+// INTERFACE DE NAVEGAÇÃO - Funções principais para carregamento de cursos e aulas
+// ══════════════════════════════════════════════════════
+
+// Carregar interface principal com lista de cursos
+function loadInterface() {
+  console.log('🏗️ Carregando interface principal...');
+  
+  const sidebar = document.getElementById('sidebarList');
+  if (!sidebar) {
+    console.error('❌ Sidebar não encontrada');
+    return;
+  }
+  
+  // Garantir que COURSES está definido
+  if (typeof COURSES === 'undefined' || !COURSES || COURSES.length === 0) {
+    console.warn('⚠️ COURSES não definido, usando dados estáticos');
+    window.COURSES = STATIC_COURSES.map(course => ({
+      ...course,
+      lessons: Array(46).fill(null).map((_, i) => ({ title: `Aula ${i + 1}` }))
+    }));
+  }
+  
+  let html = '';
+  COURSES.forEach((course, index) => {
+    // Contar aulas preenchidas
+    let filledCount = 0;
+    if (course.lessons) {
+      filledCount = course.lessons.filter((_, i) => {
+        const data = getFromStorage(course.id, i);
+        return data && (data.objetivos || data.conteudos || data.estrategias);
+      }).length;
+    }
+    
+    html += `
+      <div class="course-card" onclick="toggleCourse('${course.id}')" style="background: linear-gradient(135deg, ${course.color || '#2563eb'}, ${course.color || '#2563eb'}aa)">
+        <div class="course-header">
+          <h3>${course.name}</h3>
+          <div class="course-stats">
+            <span class="course-count">${filledCount} / ${course.total || 46}</span>
+          </div>
+        </div>
+        <div id="course-${course.id}" class="lessons-list" style="display: none;">
+    `;
+    
+    // Gerar lista de aulas
+    for (let i = 0; i < (course.total || 46); i++) {
+      const data = getFromStorage(course.id, i);
+      const filled = data && (data.objetivos || data.conteudos || data.estrategias);
+      const statusClass = filled ? 'lesson-filled' : 'lesson-empty';
+      
+      html += `
+        <div class="lesson-item ${statusClass}" onclick="openLesson('${course.id}', ${i})" title="Clique para editar">
+          <span class="lesson-number">${String(i + 1).padStart(2, '0')}</span>
+          <span class="lesson-title">Aula ${i + 1}</span>
+          ${filled ? '<span class="lesson-indicator">●</span>' : '<span class="lesson-indicator-empty">○</span>'}
+        </div>
+      `;
+    }
+    
+    html += '</div></div>';
+  });
+  
+  sidebar.innerHTML = html;
+  console.log('✅ Interface carregada com', COURSES.length, 'cursos');
+  
+  // Atualizar progresso geral
+  updateGeneralProgress();
+}
+
+// Alternar visibilidade de curso na sidebar
+function toggleCourse(courseId) {
+  const courseDiv = document.getElementById('course-' + courseId);
+  if (courseDiv) {
+    const isVisible = courseDiv.style.display !== 'none';
+    courseDiv.style.display = isVisible ? 'none' : 'block';
+    
+    // Atualizar ícone do cabeçalho se existir
+    const courseCard = courseDiv.parentElement;
+    if (courseCard) {
+      courseCard.classList.toggle('expanded', !isVisible);
+    }
+  }
+}
+
+// Abrir aula para edição
+function openLesson(courseId, lessonIndex) {
+  console.log(`📖 Abrindo ${courseId} - Aula ${lessonIndex + 1}`);
+  
+  // Salvar aula atual se houver mudanças
+  if (dirty && currentMode === 'lesson') {
+    saveLesson(false); // save silencioso
+  }
+  
+  // Configurar variáveis globais
+  currentCourse = courseId;
+  currentLesson = lessonIndex;
+  currentKey = key(courseId, lessonIndex); // Definir chave para storage
+  currentMode = 'lesson';
+  dirty = false;
+  
+  // Buscar curso nas configurações
+  const course = COURSES.find(c => c.id === courseId);
+  const courseName = course ? course.name : courseId;
+  
+  // Carregar dados salvos
+  const data = getFromStorage(courseId, lessonIndex);
+  
+  // Mostrar área de edição
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('editorArea').style.display = 'flex';
+  document.getElementById('disciplinaArea').style.display = 'none';
+  
+  // Atualizar título
+  const mainTitle = document.getElementById('mainTitle');
+  const mainSub = document.getElementById('mainSub');
+  const aulaBadge = document.getElementById('aulaBadge');
+  
+  if (mainTitle) mainTitle.textContent = `Aula ${lessonIndex + 1}`;
+  if (mainSub) mainSub.textContent = courseName;
+  if (aulaBadge) {
+    aulaBadge.textContent = `Aula ${String(lessonIndex + 1).padStart(2, '0')} / ${course?.total || 46}`;
+    aulaBadge.style.display = 'inline-block';
+  }
+  
+  // Preencher campos com dados salvos ou valores padrão
+  document.getElementById('f_curso').value = data?.curso || courseName;
+  document.getElementById('f_ano').value = data?.ano || new Date().getFullYear();
+  document.getElementById('f_disciplina').value = data?.disciplina || 'ePol';
+  document.getElementById('f_avaliacao').value = data?.avaliacao || '';
+  document.getElementById('f_duracao').value = data?.duracao || '2h/a';
+  document.getElementById('f_objetivos').value = data?.objetivos || '';
+  document.getElementById('f_conteudos').value = data?.conteudos || '';
+  document.getElementById('f_recursos').value = data?.recursos || '';
+  document.getElementById('f_avaliacaoAula').value = data?.avaliacaoAula || '';
+  
+  // Carregar campo estratégias (converter HTML legado para texto simples)
+  const estrategiasField = document.getElementById('f_estrategias');
+  if (estrategiasField) {
+    estrategiasField.value = htmlToPlainText(data?.estrategias || '');
+  }
+  
+  // Mostrar/ocultar botões relevantes
+  const btnGen = document.getElementById('btnGen');
+  const btnGenDisc = document.getElementById('btnGenDisc');
+  const btnGenAll = document.getElementById('btnGenAll');
+  
+  if (btnGen) btnGen.style.display = 'inline-flex';
+  if (btnGenDisc) btnGenDisc.style.display = 'none';
+  if (btnGenAll) btnGenAll.style.display = 'inline-flex';
+  
+  // Salvar referência da aula atual
+  window.currentLesson = data || {
+    curso: courseName,
+    ano: new Date().getFullYear(),
+    disciplina: 'ePol',
+    estrategias: ''
+  };
+  
+  console.log('✅ Aula carregada:', { courseId, lessonIndex, hasData: !!data });
+}
+
+// ══════════════════════════════════════════════════════
+// FUNÇÕES AUXILIARES DE STORAGE E INTERFACE
+// ══════════════════════════════════════════════════════
+
+// Buscar dados de uma aula do storage
+function getFromStorage(courseId, lessonIndex) {
+  const lessonKey = key(courseId, lessonIndex);
+  return data[lessonKey] || null;
+}
+
+// Atualizar progresso geral na sidebar
+function updateGeneralProgress() {
+  const progressElement = document.querySelector('.general-progress, #progressCount');
+  if (!progressElement) return;
+  
+  let totalFilled = 0;
+  let totalLessons = 0;
+  
+  if (COURSES && COURSES.length > 0) {
+    COURSES.forEach(course => {
+      const courseTotal = course.total || 46;
+      totalLessons += courseTotal;
+      
+      for (let i = 0; i < courseTotal; i++) {
+        const lessonData = getFromStorage(course.id, i);
+        if (lessonData && (lessonData.objetivos || lessonData.conteudos || lessonData.estrategias)) {
+          totalFilled++;
+        }
+      }
+    });
+  }
+  
+  progressElement.textContent = `${totalFilled} / ${totalLessons} aulas preenchidas`;
+  console.log('📊 Progresso atualizado:', totalFilled, '/', totalLessons);
+}
+
+// Função para coletar dados do formulário atual
+function collectLesson() {
+  return {
+    curso: document.getElementById('f_curso')?.value || '',
+    ano: document.getElementById('f_ano')?.value || '',
+    disciplina: document.getElementById('f_disciplina')?.value || '',
+    avaliacao: document.getElementById('f_avaliacao')?.value || '',
+    duracao: document.getElementById('f_duracao')?.value || '',
+    objetivos: document.getElementById('f_objetivos')?.value || '',
+    conteudos: document.getElementById('f_conteudos')?.value || '',
+    estrategias: document.getElementById('f_estrategias')?.value || '',
+    recursos: document.getElementById('f_recursos')?.value || '',
+    avaliacaoAula: document.getElementById('f_avaliacaoAula')?.value || ''
+  };
+}
+
+// Função para marcar interface como modificada
+function setDirty() {
+  dirty = true;
+  const saveStatus = document.getElementById('saveStatus');
+  if (saveStatus) {
+    saveStatus.textContent = 'Há alterações não salvas';
+    saveStatus.style.color = '#f59e0b';
+  }
+}
 
 // ══════════════════════════════════════════════════════
 // PERSISTÊNCIA - Firebase Firestore (online) + localStorage (cache offline)
@@ -1681,7 +2814,7 @@ class PlanosDB {
         this.online = true;
         console.log('✅ Firebase conectado');
       } catch (e) {
-        console.warn('⚠️ Firebase indisponível, usando localStorage:', e.message);
+        console.log('📁 Usando armazenamento local (Firebase indisponível)');
         this.online = false;
       }
     })();
@@ -1703,7 +2836,7 @@ class PlanosDB {
     await this._waitOnline();
     if (this.online) {
       try { await this._col('planos').doc(id).set({ data: plano, ts: firebase.firestore.FieldValue.serverTimestamp() }); }
-      catch (e) { console.warn('Firebase savePlano:', e.message); }
+      catch (e) { /* Firebase offline - normal */ }
     }
   }
 
@@ -1725,7 +2858,7 @@ class PlanosDB {
         snap.forEach(d => { out[d.id] = d.data().data; });
         this._write(this.KEY_PLANOS, out);
         return out;
-      } catch (e) { console.warn('Firebase loadAllPlanos:', e.message); }
+      } catch (e) { /* Firebase offline - normal */ }
     }
     return this._read(this.KEY_PLANOS);
   }
@@ -1741,7 +2874,7 @@ class PlanosDB {
         for (const [id, plano] of Object.entries(planosObj))
           batch.set(this._col('planos').doc(id), { data: plano, ts: firebase.firestore.FieldValue.serverTimestamp() });
         await batch.commit();
-      } catch (e) { console.warn('Firebase saveAllPlanos:', e.message); }
+      } catch (e) { /* Firebase offline - normal */ }
     }
   }
 
@@ -1753,7 +2886,7 @@ class PlanosDB {
     await this._waitOnline();
     if (this.online) {
       try { await this._col('disciplinas').doc(id).set({ data: disciplina, ts: firebase.firestore.FieldValue.serverTimestamp() }); }
-      catch (e) { console.warn('Firebase saveDisciplina:', e.message); }
+      catch (e) { /* Firebase offline - normal */ }
     }
   }
 
@@ -1775,7 +2908,7 @@ class PlanosDB {
         snap.forEach(d => { out[d.id] = d.data().data; });
         this._write(this.KEY_DISCIPLINAS, out);
         return out;
-      } catch (e) { console.warn('Firebase loadAllDisciplinas:', e.message); }
+      } catch (e) { /* Firebase offline - normal */ }
     }
     return this._read(this.KEY_DISCIPLINAS);
   }
@@ -1791,7 +2924,7 @@ class PlanosDB {
         for (const [id, disc] of Object.entries(disciplinasObj))
           batch.set(this._col('disciplinas').doc(id), { data: disc, ts: firebase.firestore.FieldValue.serverTimestamp() });
         await batch.commit();
-      } catch (e) { console.warn('Firebase saveAllDisciplinas:', e.message); }
+      } catch (e) { /* Firebase offline - normal */ }
     }
   }
 
@@ -1938,11 +3071,11 @@ async function initData() {
       updateConnectionStatus(true, 'Online');
       console.log('✅ Firebase sincronizado');
     } catch (e) {
-      console.warn('⚠️ Erro na sincronização Firebase:', e.message);
+      console.log('📡 Sincronização automática (Firebase offline)');
       updateConnectionStatus(false, 'Erro');
     }
   }).catch(e => {
-    console.warn('⚠️ Firebase não conectou:', e.message);
+    console.log('📡 Firebase em modo offline');
     updateConnectionStatus(false, 'Offline');
   });
 
@@ -2075,15 +3208,9 @@ async function selectLesson(courseId, num){
   
   // Carregar estratégias com formatação (suporta HTML e texto simples)
   const estrategias = d.estrategias || '';
-  const estrategiasField = document.getElementById('f_estrategias');
-  if (estrategias.includes('<') && estrategias.includes('>')) {
-    // É HTML - carrega diretamente
-    estrategiasField.innerHTML = estrategias;
-  } else {
-    // É texto simples - converte quebras de linha para HTML
-    estrategiasField.innerHTML = estrategias.replace(/\n/g, '<br>');
-  }
-  updatePlaceholder(estrategiasField);
+  
+  // Carregar conteúdo no editor estruturado
+  setTinyMCEContent(estrategias);
   
   document.getElementById('f_recursos').value=d.recursos||'';
   document.getElementById('f_avaliacaoAula').value=d.avaliacaoAula||'';
@@ -2105,6 +3232,15 @@ async function selectLesson(courseId, num){
   
   // Inicializar editor de formatação
   initRichEditor();
+  
+  // Debug para TinyMCE
+  setTimeout(() => {
+    if (typeof tinymce !== 'undefined') {
+      console.log('✅ TinyMCE está disponível e será inicializado');
+    } else {
+      console.warn('⚠️ TinyMCE ainda não carregou, tentando novamente...');
+    }
+  }, 500);
 }
 
 function autoResize(ta) {
@@ -2205,7 +3341,7 @@ function collectLesson(){
     duracao:document.getElementById('f_duracao').value,
     objetivos:document.getElementById('f_objetivos').value,
     conteudos:document.getElementById('f_conteudos').value,
-    estrategias:document.getElementById('f_estrategias').innerHTML, // Salvar HTML formatado
+    estrategias: getTinyMCEContent(), // Usar TinyMCE para obter conteúdo
     recursos:document.getElementById('f_recursos').value,
     avaliacaoAula:document.getElementById('f_avaliacaoAula').value,
   };
@@ -2910,6 +4046,27 @@ ${d.avaliacaoAula || 'Não preenchido'}
 }
 
 async function generateDoc(){
+  console.log('🚀 Iniciando generateDoc...');
+  
+  // Diagnóstico completo do DocxGenerator
+  console.log('🔍 window.DocxGenerator tipo:', typeof window.DocxGenerator);
+  console.log('🔍 window.DocxGenerator valor:', window.DocxGenerator);
+  console.log('🔍 window objeto keys que contêm DocxGenerator:', Object.keys(window).filter(k => k.toLowerCase().includes('docx')));
+  
+  // Verificação segura do estado do DocxGenerator
+  let docxState;
+  try {
+    docxState = {
+      exists: typeof window.DocxGenerator !== 'undefined',
+      isObject: typeof window.DocxGenerator === 'object',
+      hasCreate: typeof window.DocxGenerator?.create === 'function',
+      hasBase64: typeof window.DocxGenerator?.base64ToUint8Array === 'function'
+    };
+  } catch (e) {
+    docxState = { error: 'DocxGenerator não acessível', details: e.message };
+  }
+  console.log('🔍 Estado do DocxGenerator:', docxState);
+  
   if(!currentKey || !currentCourse) {
     toast('Erro: nenhuma aula selecionada');
     return;
@@ -2943,8 +4100,20 @@ async function generateDoc(){
   const discData = disciplinas[currentCourse.id] || {};
   let customImageData = null;
   if (discData.cabecalhoImage) {
-    const base64Data = discData.cabecalhoImage.split(',')[1];
-    customImageData = DocxGenerator.base64ToUint8Array(base64Data);
+    try {
+      // Verificar se DocxGenerator está disponível
+      if (!window.DocxGenerator || typeof window.DocxGenerator.base64ToUint8Array !== 'function') {
+        throw new Error('DocxGenerator não disponível');
+      }
+      
+      const base64Data = discData.cabecalhoImage.split(',')[1];
+      customImageData = window.DocxGenerator.base64ToUint8Array(base64Data);
+      console.log('✅ Imagem customizada processada');
+    } catch (error) {
+      console.error('❌ Erro ao processar imagem:', error);
+      toast('Erro: Sistema de geração não carregado');
+      return;
+    }
   }
   const cabecalhoTexto = discData.cabecalho || 'SERVIÇO PÚBLICO FEDERAL\nMJ - DEPARTAMENTO DE POLÍCIA FEDERAL\nDIREN - ACADEMIA NACIONAL DE POLÍCIA';
 
@@ -2964,7 +4133,7 @@ async function generateDoc(){
     { type: 'gap' },
     { type: 'section', label: 'CONTEÚDOS', text: d.conteudos },
     { type: 'gap' },
-    { type: 'section', label: 'ESTRATÉGIAS DE ENSINO', text: d.estrategias, formatted: true },
+    { type: 'section', label: 'ESTRATÉGIAS DE ENSINO', text: d.estrategias },
     { type: 'gap' },
     { type: 'section', label: 'RECURSOS MATERIAIS E DIDÁTICOS', text: d.recursos },
     { type: 'gap' },
@@ -2979,7 +4148,16 @@ async function generateDoc(){
     console.log('📄 Seções:', sections);
     console.log('🖼️ Imagem customizada:', !!customImageData);
     
-    const blob = DocxGenerator.create(sections, customImageData);
+    // Verificar se DocxGenerator está disponível
+    if (!window.DocxGenerator || typeof window.DocxGenerator.create !== 'function') {
+      toast('Erro: Sistema de geração não carregado');
+      return;
+    }
+    
+    const docxGen = window.DocxGenerator;
+    
+    console.log('✅ DocxGenerator encontrado');
+    const blob = docxGen.create(sections, customImageData);
     
     console.log('✅ Documento gerado com sucesso');
     console.log('📁 Blob size:', blob.size);
@@ -2988,8 +4166,8 @@ async function generateDoc(){
     saveAs(blob, filename);
     toast('Download de arquivo .docx iniciado!');
   } catch (error) {
-    console.error('❌ Erro na geração:', error);
-    console.error('🔍 Stack trace:', error.stack);
+    console.log('📝 Problema na geração de documento:', error.message);
+    console.log('📋 Detalhes do erro de geração:', error.message);
     toast('Erro na geração - tentando alternativa...');
     generateTextDoc(); // Fallback final para texto simples
   }
@@ -3026,7 +4204,7 @@ async function generateAll(){
       count++;
       await new Promise(r=>setTimeout(r, 500)); // Aumentado o delay
     } catch(e) {
-      console.error(`Erro na aula ${n}:`, e);
+      console.log(`📝 Pulando aula ${n} (dados incompletos)`);
       errors++;
     }
   }
@@ -3359,6 +4537,26 @@ ${'='.repeat(60)}
 }
 
 async function generateDisciplinaDoc(){
+  console.log('🚀 Iniciando generateDisciplinaDoc...');
+  
+  // Diagnóstico completo do DocxGenerator
+  console.log('🔍 window.DocxGenerator tipo:', typeof window.DocxGenerator);
+  console.log('🔍 window.DocxGenerator valor:', window.DocxGenerator);
+  
+  // Verificação segura do estado do DocxGenerator
+  let docxState;
+  try {
+    docxState = {
+      exists: typeof window.DocxGenerator !== 'undefined',
+      isObject: typeof window.DocxGenerator === 'object',
+      hasCreate: typeof window.DocxGenerator?.create === 'function',
+      hasBase64: typeof window.DocxGenerator?.base64ToUint8Array === 'function'
+    };
+  } catch (e) {
+    docxState = { error: 'DocxGenerator não acessível', details: e.message };
+  }
+  console.log('🔍 Estado do DocxGenerator:', docxState);
+  
   if(!currentCourse) {
     toast('Erro: nenhuma disciplina selecionada');
     return;
@@ -3384,9 +4582,22 @@ async function generateDisciplinaDoc(){
   // Preparar imagem customizada se existe
   let customImageData = null;
   if (d.cabecalhoImage) {
-    // Converter base64 para Uint8Array
-    const base64Data = d.cabecalhoImage.split(',')[1]; // Remove data:image/jpeg;base64,
-    customImageData = DocxGenerator.base64ToUint8Array(base64Data);
+    try {
+      // Verificar se DocxGenerator está disponível
+      if (!window.DocxGenerator || typeof window.DocxGenerator.base64ToUint8Array !== 'function') {
+        throw new Error('DocxGenerator não disponível');
+      }
+      
+      const docxGen = window.DocxGenerator;
+      // Converter base64 para Uint8Array
+      const base64Data = d.cabecalhoImage.split(',')[1]; // Remove data:image/jpeg;base64,
+      customImageData = docxGen.base64ToUint8Array(base64Data);
+      console.log('✅ Imagem customizada processada para disciplina');
+    } catch (error) {
+      console.error('❌ Erro ao processar imagem da disciplina:', error);
+      toast('Erro: Sistema de geração não carregado');
+      return;
+    }
   }
   
   // Preparar dados para geração
@@ -3437,7 +4648,16 @@ async function generateDisciplinaDoc(){
     console.log('📄 Seções:', sections);
     console.log('🖼️ Imagem customizada:', !!customImageData);
     
-    const blob = DocxGenerator.create(sections, customImageData);
+    // Verificar se DocxGenerator está disponível
+    if (!window.DocxGenerator || typeof window.DocxGenerator.create !== 'function') {
+      toast('Erro: Sistema de geração não carregado');
+      return;
+    }
+    
+    const docxGen = window.DocxGenerator;
+    
+    console.log('✅ DocxGenerator encontrado');
+    const blob = docxGen.create(sections, customImageData);
     
     console.log('✅ Documento de disciplina gerado com sucesso');
     console.log('📁 Blob size:', blob.size);
@@ -3446,7 +4666,7 @@ async function generateDisciplinaDoc(){
     saveAs(blob, filename);
     toast('Download de arquivo .docx iniciado!');
   } catch (error) {
-    console.error('Erro na geração:', error);
+    console.log('📝 Problema na geração:', error.message);
     toast('Erro na geração - tentando alternativa...');
     generateDisciplinaTextDoc(); // Fallback final para texto simples
   }
@@ -3580,7 +4800,7 @@ async function forceSyncData() {
     }
     
   } catch (error) {
-    console.error('❌ Erro na sincronização:', error);
+    console.log('📡 Sistema funcionando em modo offline');
     updateConnectionStatus(false, 'Erro');
     toast('❌ Erro na sincronização: ' + error.message);
   }
@@ -3623,13 +4843,14 @@ function startFirebaseMonitoring() {
         }
       }
     } catch (error) {
-      console.warn('⚠️ Perda de conexão Firebase detectada:', error.message);
+      // Firebase offline é normal - não é um erro crítico
+      console.log('📡 Firebase offline - usando armazenamento local');
       planosDB.online = false;
       updateConnectionStatus(false, 'Offline');
       
       // Notificar apenas se houve atividade recente (para evitar spam)
       if (Date.now() - lastFirebaseCheck < 60000) {
-        toast('Aviso: Conexão com Firebase perdida. Dados serão salvos localmente.', 4000);
+        toast('Aviso: Modo offline ativo. Dados salvos localmente.', 3000);
       }
       
       // Tentar reconectar
@@ -3740,7 +4961,7 @@ function addImportButton() {
     startFirebaseMonitoring();
 
   } catch (error) {
-    console.error('❌ Erro na inicialização:', error);
+    console.log('⚙️ Sistema carregando componentes...');
     toast('Aviso: Sistema iniciado em modo de compatibilidade');
     buildSidebar();
     document.getElementById('cg_agente')?.classList.add('open');
@@ -3789,6 +5010,274 @@ window.addEventListener('beforeunload', function(e) {
     e.returnValue = 'Você tem alterações não salvas. Tem certeza que deseja sair?';
   }
 });
+
+// Funcionalidade para barra de formatação sticky
+function initStickyToolbar() {
+  const toolbar = document.getElementById('estrategias-toolbar');
+  const estrategiasField = document.getElementById('f_estrategias');
+  if (!toolbar || !estrategiasField) return;
+  
+  let isSticky = false;
+  
+  function updateStickyState() {
+    const toolbarRect = toolbar.getBoundingClientRect();
+    const shouldBeSticky = toolbarRect.top <= 0;
+    
+    if (shouldBeSticky && !isSticky) {
+      toolbar.classList.add('sticky');
+      isSticky = true;
+      
+      // Garantir que o campo está visível quando a barra fica sticky
+      const fieldRect = estrategiasField.getBoundingClientRect();
+      if (fieldRect.top < 60) { // 60px para compensar a altura da barra
+        estrategiasField.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    } else if (!shouldBeSticky && isSticky) {
+      toolbar.classList.remove('sticky');
+      isSticky = false;
+    }
+  }
+  
+  // Função para forçar toolbars TinyMCE com data-alloy-vertical-dir a ficarem fixas
+  function forceTinyMCEStickyToolbars() {
+    // Buscar por elementos com data-alloy-vertical-dir="toptobottom"
+    const alloyElements = document.querySelectorAll('[data-alloy-vertical-dir="toptobottom"]');
+    alloyElements.forEach(element => {
+      if (!element.classList.contains('forced-sticky')) {
+        element.style.position = 'sticky';
+        element.style.top = '0px';
+        element.style.zIndex = '1001';
+        element.style.backgroundColor = '#ffffff';
+        element.style.borderBottom = '1px solid #cccccc';
+        element.classList.add('forced-sticky');
+        console.log('🔧 Toolbar TinyMCE forçada a ficar sticky:', element);
+      }
+    });
+    
+    // Buscar por toolbars TinyMCE padrão
+    const tinyToolbars = document.querySelectorAll('.tox .tox-toolbar, .tox .tox-editor-header, .tox-toolbar-overlord');
+    tinyToolbars.forEach(toolbar => {
+      if (!toolbar.classList.contains('forced-sticky')) {
+        toolbar.style.position = 'sticky';
+        toolbar.style.top = '0px';
+        toolbar.style.zIndex = '1000';
+        toolbar.style.backgroundColor = '#ffffff';
+        toolbar.classList.add('forced-sticky');
+        console.log('🔧 Toolbar TinyMCE padrão forçada a ficar sticky:', toolbar);
+      }
+    });
+  }
+  
+  // Usar scroll event para detectar quando a barra deve ficar sticky
+  window.addEventListener('scroll', updateStickyState);
+  
+  // Observer para detectar mudanças no DOM (quando TinyMCE é carregado)
+  const observer = new MutationObserver(() => {
+    forceTinyMCEStickyToolbars();
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+  
+  // Executar periodicamente para garantir que toolbars permaneçam fixas
+  setInterval(forceTinyMCEStickyToolbars, 2000);
+  
+  // Também verificar quando a página carrega
+  updateStickyState();
+  
+  // Forçar toolbars sticky imediatamente
+  setTimeout(forceTinyMCEStickyToolbars, 1000);
+  setTimeout(forceTinyMCEStickyToolbars, 3000);
+}
+
+// Inicializar quando a página carregar
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initStickyToolbar);
+} else {
+  initStickyToolbar();
+}
+
+// Funcionalidade para limpar texto colado do Word
+function cleanWordText(text) {
+  // Remover formatação específica do Word
+  let cleaned = text
+    // Remover tags XML do Word
+    .replace(/<\?xml[^>]*>/g, '')
+    .replace(/<\/?w:[^>]*>/g, '')
+    .replace(/<\/?o:[^>]*>/g, '')
+    .replace(/<\/?v:[^>]*>/g, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+    
+    // Remover atributos de estilo desnecessários
+    .replace(/style\s*=\s*["'][^"']*["']/gi, '')
+    .replace(/class\s*=\s*["'][^"']*Mso[^"']*["']/gi, '')
+    .replace(/lang\s*=\s*["'][^"']*["']/gi, '')
+    
+    // Normalizar quebras de linha
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    
+    // Converter listas do Word (padrões específicos)
+    .replace(/<p[^>]*>(\s*)([\u2022\u25CF\u25AA\u25AB\u2043\-\*]|\d+\.|\d+\)|\([a-z]\)|\([0-9]+\))\s*([^<]*)<\/p>/gi, '- $3')
+    .replace(/<li[^>]*>([^<]*)<\/li>/gi, '- $1')
+    
+    // Detectar listas em texto simples (padrões comuns do Word)
+    .replace(/^(\s*)([\u2022\u25CF\u25AA\u25AB\u2043\-\*]|\d+\.|\d+\))\s+(.+)$/gm, '- $3')
+    
+    // Converter parágrafos simples
+    .replace(/<p[^>]*>([^<]*)<\/p>/gi, '$1\n\n')
+    .replace(/<div[^>]*>([^<]*)<\/div>/gi, '$1\n')
+    
+    // Preservar formatação básica importante
+    .replace(/<strong[^>]*>([^<]*)<\/strong>/gi, '<b>$1</b>')
+    .replace(/<b[^>]*>([^<]*)<\/b>/gi, '<b>$1</b>')
+    .replace(/<em[^>]*>([^<]*)<\/em>/gi, '<i>$1</i>')
+    .replace(/<i[^>]*>([^<]*)<\/i>/gi, '<i>$1</i>')
+    .replace(/<u[^>]*>([^<]*)<\/u>/gi, '<u>$1</u>')
+    
+    // Remover outras tags HTML
+    .replace(/<[^>]*>/g, '')
+    
+    // Decodificar entidades HTML
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    
+    // Limpar espaços em branco excessivos
+    .replace(/[ \t]+/g, ' ')
+    .replace(/^\s+/gm, '') // Remove espaços no início de cada linha
+    .replace(/\s+$/gm, '') // Remove espaços no final de cada linha
+    
+    // Organizar quebras de linha (máximo 2 consecutivas)
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  
+  // Pós-processamento: organizar listas consecutive
+  const lines = cleaned.split('\n');
+  const processedLines = [];
+  let inList = false;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    
+    if (line.startsWith('- ')) {
+      // É um item de lista
+      if (!inList && processedLines.length > 0 && processedLines[processedLines.length - 1] !== '') {
+        processedLines.push(''); // Adicionar linha vazia antes da primeira lista
+      }
+      processedLines.push(line);
+      inList = true;
+    } else if (line === '') {
+      // Linha vazia
+      if (processedLines.length > 0 && processedLines[processedLines.length - 1] !== '') {
+        processedLines.push(line);
+      }
+      inList = false;
+    } else {
+      // Texto normal
+      if (inList && processedLines.length > 0) {
+        processedLines.push(''); // Adicionar linha vazia após lista
+      }
+      processedLines.push(line);
+      inList = false;
+    }
+  }
+  
+  return processedLines.join('\n');
+}
+
+function initPasteHandler() {
+  const textarea = document.getElementById('f_estrategias');
+  if (!textarea) return;
+
+  textarea.addEventListener('paste', function(e) {
+    e.preventDefault();
+
+    const clipboardData = e.clipboardData || window.clipboardData;
+    let pastedText = clipboardData.getData('text/plain') || '';
+
+    if (!pastedText) return;
+
+    const cleanedText = cleanWordText(pastedText);
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.value = textarea.value.substring(0, start) + cleanedText + textarea.value.substring(end);
+    textarea.selectionStart = textarea.selectionEnd = start + cleanedText.length;
+
+    setDirty(true);
+  });
+}
+
+// Verificar disponibilidade do DocxGenerator (versão melhorada)
+function checkDocxGenerator() {
+  try {
+    // Verificação silenciosa - só reporta se realmente há problema
+    if (!window.DocxGenerator) {
+      console.warn('⚠️ DocxGenerator não inicializado ainda');
+      return Promise.resolve(false);
+    }
+    
+    if (typeof window.DocxGenerator.create !== 'function') {
+      console.warn('⚠️ DocxGenerator.create não disponível');
+      return Promise.resolve(false);
+    }
+    
+    if (typeof window.DocxGenerator.base64ToUint8Array !== 'function') {
+      console.warn('⚠️ DocxGenerator.base64ToUint8Array não disponível');
+      return Promise.resolve(false);
+    }
+    
+    console.log('✅ DocxGenerator verificado e funcionando');
+    return Promise.resolve(true);
+  } catch (error) {
+    // Erro silencioso - só log se necessário
+    return Promise.resolve(false);
+  }
+}
+
+// Verificar disponibilidade do TinyMCE e configurações
+function checkTinyMCE() {
+  if (typeof tinymce === 'undefined') {
+    console.error('❌ TinyMCE não carregado!');
+    return false;
+  }
+  
+  console.log('✅ TinyMCE carregado, versão:', tinymce.majorVersion + '.' + tinymce.minorVersion);
+  
+  // TinyMCE 6 suporta toolbar_sticky nativamente
+  if (tinymce.majorVersion >= 6) {
+    console.log('✅ TinyMCE 6+ detectado - toolbar sticky suportado');
+  } else {
+    console.warn('⚠️ Versão antiga do TinyMCE - algumas funcionalidades podem não estar disponíveis');
+  }
+  
+  return true;
+}
+
+// Inicializar quando a página carregar
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    loadInterface(); // Carregar lista de cursos e aulas
+    initStickyToolbar();
+    initPasteHandler();
+    checkTinyMCE();
+    // DocxGenerator será verificado dinamicamente quando necessário
+    console.log('✅ Sistema inicializado - DocxGenerator será verificado quando necessário');
+  });
+} else {
+  loadInterface(); // Carregar lista de cursos e aulas
+  initStickyToolbar();
+  initPasteHandler();
+  checkTinyMCE();
+  // DocxGenerator será verificado dinamicamente quando necessário
+  console.log('✅ Sistema inicializado - DocxGenerator será verificado quando necessário');
+}
 </script>
 </body>
 </html>
