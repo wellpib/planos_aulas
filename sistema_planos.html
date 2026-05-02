@@ -2949,6 +2949,27 @@ function setDirty() {
 // PERSISTÊNCIA - Firebase Firestore (online) + localStorage (cache offline)
 // ══════════════════════════════════════════════════════
 
+// Intercepta erros internos do Firebase SDK que não chegam como exceções JS
+// (ex: resource-exhausted lançado via logger interno, não via Promise.reject)
+(function() {
+  let _quotaErrorDebounce = false;
+  const _origError = console.error.bind(console);
+  console.error = function(...args) {
+    _origError(...args);
+    if (_quotaErrorDebounce) return;
+    const text = args.map(a => (a instanceof Error ? a.message : String(a))).join(' ');
+    if (text.includes('resource-exhausted') || text.includes('Quota exceeded') || text.includes('RESOURCE_EXHAUSTED')) {
+      _quotaErrorDebounce = true;
+      setTimeout(() => { _quotaErrorDebounce = false; }, 60000); // 1 min sem repetir
+      setTimeout(() => {
+        if (typeof planosDB !== 'undefined') planosDB.online = false;
+        if (typeof updateConnectionStatus === 'function') updateConnectionStatus(false, 'Cota excedida');
+        if (typeof toast === 'function') toast('⚠️ Cota do banco excedida. Dados salvos localmente.', 8000);
+      }, 50);
+    }
+  };
+})();
+
 const firebaseConfig = {
   apiKey: "AIzaSyBCit9u8JNguJ7DrqXHMjAbxbnVzMT95b0",
   authDomain: "planos-de-aula-cd743.firebaseapp.com",
@@ -3016,13 +3037,22 @@ class PlanosDB {
         const batch = this.db.batch();
         batch.set(this._col('planos').doc(id), { data: plano, ts });
         batch.set(this._col('config').doc('last_sync'), { ts });
-        await batch.commit();
+        await this._commitWithTimeout(batch);
         if (typeof localLastSyncTs !== 'undefined') localLastSyncTs = Date.now();
       } catch (e) {
         this.online = false;
         throw e;
       }
     }
+  }
+
+  _commitWithTimeout(batch, ms = 10000) {
+    return Promise.race([
+      batch.commit(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Timeout: banco demorou mais de 10s para responder')), ms)
+      )
+    ]);
   }
 
   async loadPlano(id) {
@@ -3075,7 +3105,7 @@ class PlanosDB {
         const batch = this.db.batch();
         batch.set(this._col('disciplinas').doc(id), { data: disciplina, ts });
         batch.set(this._col('config').doc('last_sync'), { ts });
-        await batch.commit();
+        await this._commitWithTimeout(batch);
         if (typeof localLastSyncTs !== 'undefined') localLastSyncTs = Date.now();
       } catch (e) {
         this.online = false;
