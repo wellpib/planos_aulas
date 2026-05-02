@@ -183,7 +183,7 @@ window.DocxGenerator = {
         let blockRows = '';
         for (const block of blocks) {
           if (block.titulo && block.titulo.trim()) {
-            blockRows += `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="D9E1F2"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr><w:t>${e2(block.titulo.trim())}</w:t></w:r></w:p></w:tc></w:tr>`;
+            blockRows += `<w:tr><w:tc><w:tcPr><w:tcW w:w="10772" w:type="dxa"/><w:shd w:val="clear" w:color="auto" w:fill="D9E1F2"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p><w:pPr><w:spacing w:before="0" w:after="0" w:line="240" w:lineRule="exact"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="18"/></w:rPr><w:t>${e2(block.titulo.trim().toUpperCase())}</w:t></w:r></w:p></w:tc></w:tr>`;
           }
           const lines = (block.descricao || '').split('\n');
           const sparasArray = [];
@@ -3038,7 +3038,6 @@ class PlanosDB {
         batch.set(this._col('planos').doc(id), { data: plano, ts });
         batch.set(this._col('config').doc('last_sync'), { ts });
         await this._commitWithTimeout(batch);
-        if (typeof localLastSyncTs !== 'undefined') localLastSyncTs = Date.now();
       } catch (e) {
         this.online = false;
         throw e;
@@ -3106,7 +3105,6 @@ class PlanosDB {
         batch.set(this._col('disciplinas').doc(id), { data: disciplina, ts });
         batch.set(this._col('config').doc('last_sync'), { ts });
         await this._commitWithTimeout(batch);
-        if (typeof localLastSyncTs !== 'undefined') localLastSyncTs = Date.now();
       } catch (e) {
         this.online = false;
         throw e;
@@ -3484,65 +3482,13 @@ document.addEventListener('input', e => {
   if (e.target.tagName === 'TEXTAREA') autoResize(e.target);
 });
 
-// Auto-save com debounce
-let autoSaveTimer = null;
-const AUTO_SAVE_DELAY = 30000; // 30 segundos após parar de digitar
-
 function setDirty(v){
   dirty=v;
   const id=currentMode==='disciplina'?'saveStatusDisc':'saveStatus';
   const el=document.getElementById(id);
   if(!el) return;
-  if(v){ 
-    el.textContent='Alterações não salvas'; 
-    el.className='save-status'; 
-    // Configurar auto-save
-    scheduleAutoSave();
-  }
-  else{ 
-    el.textContent='Salvo'; 
-    el.className='save-status saved'; 
-    // Cancelar auto-save se foi salvo manualmente
-    clearAutoSave();
-  }
-}
-
-function scheduleAutoSave() {
-  // Cancelar timer anterior se existir
-  clearAutoSave();
-  
-  // Configurar novo timer
-  autoSaveTimer = setTimeout(async () => {
-    if (dirty) {
-      console.log('🔄 Auto-save executando...');
-      const statusEl = document.getElementById(currentMode === 'disciplina' ? 'saveStatusDisc' : 'saveStatus');
-      if (statusEl) {
-        statusEl.textContent = 'Salvando...';
-        statusEl.className = 'save-status saving';
-      }
-      
-      try {
-        if (currentMode === 'lesson' && currentKey) {
-          await saveLesson(true);
-        } else if (currentMode === 'disciplina' && currentCourse) {
-          await saveDisciplina(true);
-        }
-      } catch (error) {
-        console.error('❌ Erro no auto-save:', error);
-        if (statusEl) {
-          statusEl.textContent = 'Erro ao salvar';
-          statusEl.className = 'save-status';
-        }
-      }
-    }
-  }, AUTO_SAVE_DELAY);
-}
-
-function clearAutoSave() {
-  if (autoSaveTimer) {
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = null;
-  }
+  if(v){ el.textContent='Alterações não salvas'; el.className='save-status'; }
+  else{ el.textContent='Salvo'; el.className='save-status saved'; }
 }
 
 // Watch all fields
@@ -5085,35 +5031,6 @@ function startFirebaseMonitoring() {
     }
   }, 600000); // 10 minutos
 
-  // Verificar atualizações remotas 1x/hora — custa apenas 1 leitura
-  setInterval(() => checkForUpdates(), 3600000);
-}
-
-// Verificar atualizações via timestamp único — 1 leitura em vez de N documentos
-let localLastSyncTs = Date.now();
-
-async function checkForUpdates() {
-  try {
-    if (!planosDB.online) return;
-    const doc = await planosDB._col('config').doc('last_sync').get();
-    if (!doc.exists) return;
-    const remoteTs = doc.data().ts?.toMillis?.() || 0;
-    if (remoteTs <= localLastSyncTs || dirty) return;
-
-    console.log('🔄 Atualização remota detectada');
-    const notification = document.createElement('div');
-    notification.innerHTML = `
-      <div style="position:fixed;top:70px;right:20px;background:var(--navy);color:white;padding:12px 16px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:1000;font-size:13px;max-width:300px">
-        📥 Há atualizações disponíveis
-        <div style="margin-top:8px">
-          <button onclick="this.parentElement.parentElement.remove();forceSyncData()" style="background:var(--gold);border:none;color:var(--navy);padding:4px 12px;border-radius:4px;cursor:pointer;margin-right:8px;font-size:12px">Atualizar</button>
-          <button onclick="this.parentElement.parentElement.remove()" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px">Ignorar</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(notification);
-    setTimeout(() => { if (notification.parentNode) notification.remove(); }, 10000);
-  } catch {}
 }
 
 // Função para adicionar botão de importar backup
