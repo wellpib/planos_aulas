@@ -1290,6 +1290,22 @@ html,body{height:100%;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;fon
 .btn-revisado:hover{background:var(--bg);border-color:var(--green);color:var(--green)}
 .btn-revisado.on{background:rgba(5,150,105,.09);color:var(--green);border-color:var(--green)}
 .btn-revisado.on:hover{background:rgba(5,150,105,.16)}
+.btn-lock{background:transparent;color:var(--text3);border-color:var(--border2)}
+.btn-lock:hover{background:var(--bg);border-color:var(--navy);color:var(--navy)}
+.btn-lock.locked{background:rgba(185,28,28,.09);color:#b91c1c;border-color:#b91c1c}
+.btn-lock.locked:hover{background:rgba(185,28,28,.16)}
+.readonly-banner{display:none;align-items:center;justify-content:center;gap:8px;background:#fef3c7;border-bottom:2px solid #f59e0b;color:#92400e;padding:8px 20px;font-size:12.5px;font-weight:600;letter-spacing:.04em}
+body.app-locked .readonly-banner{display:flex}
+body.app-locked input:not([type=file]):not([type=button]):not([type=submit]):not([type=checkbox]):not([type=radio]),body.app-locked textarea,body.app-locked select{pointer-events:none;background:var(--bg)!important;color:var(--text3)!important;cursor:default!important}
+body.app-locked .btn-primary,body.app-locked .btn-revisado,body.app-locked .est-add-btn,body.app-locked .est-remove-btn{display:none!important}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:24px 28px;width:320px;max-width:90vw;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.modal-title{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:16px;letter-spacing:.04em}
+.modal-input{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:4px;font-family:'IBM Plex Sans',sans-serif;font-size:13.5px;color:var(--text);background:var(--bg);outline:none;box-sizing:border-box}
+.modal-input:focus{border-color:var(--navy)}
+.modal-error{color:#b91c1c;font-size:11.5px;margin-top:6px;display:none}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
 /* ── MAIN ── */
 .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
 /* ── TOPBAR ── */
@@ -1900,6 +1916,10 @@ div[data-alloy-vertical-dir="toptobottom"] {
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
       Gerar todos da disciplina
     </button>
+    <button class="btn btn-ghost btn-sm btn-lock" id="btnAdminLock" onclick="toggleAdminLock()" title="Bloquear edição para consulta">
+      <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+      Bloquear
+    </button>
     <button class="btn btn-ghost btn-sm" onclick="backupData()" title="Fazer backup dos dados">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
       Backup
@@ -1912,6 +1932,11 @@ div[data-alloy-vertical-dir="toptobottom"] {
       <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
       Gerar .docx
     </button>
+  </div>
+
+  <div class="readonly-banner" id="readonlyBanner">
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+    Modo somente leitura — edições desabilitadas pelo administrador
   </div>
 
   <div id="emptyState" class="empty-state">
@@ -2112,6 +2137,18 @@ DIREN - ACADEMIA NACIONAL DE POLÍCIA</textarea>
 </div>
 
 <div class="toast" id="toast"></div>
+
+<div class="modal-overlay" id="adminPasswordModal">
+  <div class="modal-box">
+    <div class="modal-title">🔐 Senha do Administrador</div>
+    <input type="password" class="modal-input" id="adminPasswordInput" placeholder="Digite a senha..." onkeydown="if(event.key==='Enter')confirmAdminPassword()">
+    <div class="modal-error" id="adminPasswordError">Senha incorreta. Tente novamente.</div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="cancelAdminPassword()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="confirmAdminPassword()">Confirmar</button>
+    </div>
+  </div>
+</div>
 
 <script>
 // ══════════════════════════════════════════════════════
@@ -2708,6 +2745,8 @@ let currentCourse = null;
 let currentMode = null; // 'lesson' | 'disciplina'
 let dirty = false;
 let currentRevisado = false;
+let appLocked = false;
+const ADMIN_PASSWORD = 'dpf2026'; // Senha do administrador
 
 function toggleRevisado() {
   currentRevisado = !currentRevisado;
@@ -2720,6 +2759,69 @@ function updateRevisadoBtn(val) {
   if (!btn) return;
   btn.classList.toggle('on', val);
   btn.title = val ? 'Plano revisado — clique para desmarcar' : 'Marcar como revisado';
+}
+
+let _adminPasswordResolve = null;
+
+function promptAdminPassword() {
+  return new Promise(resolve => {
+    _adminPasswordResolve = resolve;
+    const modal = document.getElementById('adminPasswordModal');
+    const input = document.getElementById('adminPasswordInput');
+    const error = document.getElementById('adminPasswordError');
+    input.value = '';
+    error.style.display = 'none';
+    modal.classList.add('open');
+    setTimeout(() => input.focus(), 50);
+  });
+}
+
+function confirmAdminPassword() {
+  const input = document.getElementById('adminPasswordInput');
+  const error = document.getElementById('adminPasswordError');
+  if (input.value === ADMIN_PASSWORD) {
+    document.getElementById('adminPasswordModal').classList.remove('open');
+    if (_adminPasswordResolve) { _adminPasswordResolve(true); _adminPasswordResolve = null; }
+  } else {
+    error.style.display = 'block';
+    input.value = '';
+    input.focus();
+  }
+}
+
+function cancelAdminPassword() {
+  document.getElementById('adminPasswordModal').classList.remove('open');
+  if (_adminPasswordResolve) { _adminPasswordResolve(false); _adminPasswordResolve = null; }
+}
+
+async function loadLockState() {
+  try {
+    const val = await planosDB.getConfig('app_lock');
+    appLocked = val === true;
+  } catch { appLocked = false; }
+  applyLockState(appLocked);
+}
+
+async function toggleAdminLock() {
+  const ok = await promptAdminPassword();
+  if (!ok) return;
+  appLocked = !appLocked;
+  try {
+    await planosDB.setConfig('app_lock', appLocked);
+  } catch {}
+  applyLockState(appLocked);
+  toast(appLocked ? '🔒 Sistema bloqueado para consulta.' : '🔓 Edição liberada.', 3000);
+}
+
+function applyLockState(locked) {
+  document.body.classList.toggle('app-locked', locked);
+  const btn = document.getElementById('btnAdminLock');
+  if (!btn) return;
+  btn.classList.toggle('locked', locked);
+  btn.title = locked ? 'Desbloquear edição' : 'Bloquear edição para consulta';
+  btn.innerHTML = locked
+    ? '<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Desbloquear'
+    : '<svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg> Bloquear';
 }
 
 function key(courseId, num){ return `${courseId}_${num}`; }
@@ -3292,6 +3394,8 @@ async function initData() {
       COURSES = [...STATIC_COURSES, ...loadCustomCourses()];
       updateConnectionStatus(true, 'Online');
       console.log('✅ Firebase sincronizado');
+      // Recarregar estado de bloqueio do Firebase após conexão
+      loadLockState();
     } catch (e) {
       console.log('📡 Sincronização automática (Firebase offline)');
       updateConnectionStatus(false, 'Erro');
@@ -3425,7 +3529,7 @@ async function selectLesson(courseId, num){
   document.getElementById('f_ano').value=d.ano||'2026';
   const discNome = disciplinas[currentCourse.id]?.disciplina;
   document.getElementById('f_disciplina').value = discNome || d.disciplina || `ePol - ${currentCourse.name}`;
-  document.getElementById('f_avaliacao').value = disciplinas[currentCourse.id]?.avaliacao || d.avaliacao || 'Prova Prática';
+  document.getElementById('f_avaliacao').value = d.avaliacao || disciplinas[currentCourse.id]?.avaliacao || 'Prova Prática';
   document.getElementById('f_duracao').value=d.duracao||'2h/a';
   document.getElementById('f_objetivos').value=d.objetivos||'';
   document.getElementById('f_conteudos').value=d.conteudos||'';
@@ -3458,7 +3562,7 @@ async function selectLesson(courseId, num){
   
   // Inicializar editor de formatação
   initRichEditor();
-  
+
   // Debug para TinyMCE
   setTimeout(() => {
     if (typeof tinymce !== 'undefined') {
@@ -3467,6 +3571,8 @@ async function selectLesson(courseId, num){
       console.warn('⚠️ TinyMCE ainda não carregou, tentando novamente...');
     }
   }, 500);
+
+  applyLockState(appLocked);
 }
 
 function autoResize(ta) {
@@ -3786,6 +3892,7 @@ async function selectDisciplina(courseId){
   document.getElementById('aulaBadge').style.display='none';
   resizeAllIn(document.getElementById('disciplinaArea'));
   setDirty(false);
+  applyLockState(appLocked);
 }
 
 ['fd_curso','fd_ano','fd_disciplina','fd_cargaHoraria','fd_modalidade','fd_avaliacao','fd_conhecimento','fd_habilidade',
@@ -5079,6 +5186,9 @@ function addImportButton() {
 
     // Iniciar monitoramento da conexão Firebase
     startFirebaseMonitoring();
+
+    // Carregar estado de bloqueio do administrador
+    await loadLockState();
 
   } catch (error) {
     console.log('⚙️ Sistema carregando componentes...');
