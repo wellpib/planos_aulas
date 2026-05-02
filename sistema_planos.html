@@ -1209,23 +1209,9 @@ if (document.readyState === 'loading') {
   });
 }
 
-// Executar verificação inicial MÚLTIPLA para garantir que sticky seja aplicado
-setTimeout(forceAlloyVerticalDirSticky, 100);
-setTimeout(forceAlloyVerticalDirSticky, 500);
-setTimeout(forceAlloyVerticalDirSticky, 1000);
-setTimeout(forceAlloyVerticalDirSticky, 2000);
-
-// Executar periodicamente para garantir que elementos permaneçam sticky
-setInterval(forceAlloyVerticalDirSticky, 5000);
-
-// Verificar quando janela for redimensionada ou mudança de foco
+// Aplicar sticky uma única vez ao carregar
+setTimeout(forceAlloyVerticalDirSticky, 300);
 window.addEventListener('resize', forceAlloyVerticalDirSticky);
-window.addEventListener('focus', forceAlloyVerticalDirSticky);
-document.addEventListener('scroll', function() {
-  // Verificar apenas a cada 500ms durante scroll para performance
-  clearTimeout(window.stickyScrollTimeout);
-  window.stickyScrollTimeout = setTimeout(forceAlloyVerticalDirSticky, 500);
-});
 
 console.log('🎯 Sistema APRIMORADO de detecção data-alloy-vertical-dir="toptobottom" ativado com verificações múltiplas');
 
@@ -3025,8 +3011,17 @@ class PlanosDB {
     this._write(this.KEY_PLANOS, all);
     await this._waitOnline();
     if (this.online) {
-      try { await this._col('planos').doc(id).set({ data: plano, ts: firebase.firestore.FieldValue.serverTimestamp() }); }
-      catch (e) { /* Firebase offline - normal */ }
+      try {
+        const ts = firebase.firestore.FieldValue.serverTimestamp();
+        const batch = this.db.batch();
+        batch.set(this._col('planos').doc(id), { data: plano, ts });
+        batch.set(this._col('config').doc('last_sync'), { ts });
+        await batch.commit();
+        if (typeof localLastSyncTs !== 'undefined') localLastSyncTs = Date.now();
+      } catch (e) {
+        this.online = false;
+        throw e;
+      }
     }
   }
 
@@ -3075,8 +3070,17 @@ class PlanosDB {
     this._write(this.KEY_DISCIPLINAS, all);
     await this._waitOnline();
     if (this.online) {
-      try { await this._col('disciplinas').doc(id).set({ data: disciplina, ts: firebase.firestore.FieldValue.serverTimestamp() }); }
-      catch (e) { /* Firebase offline - normal */ }
+      try {
+        const ts = firebase.firestore.FieldValue.serverTimestamp();
+        const batch = this.db.batch();
+        batch.set(this._col('disciplinas').doc(id), { data: disciplina, ts });
+        batch.set(this._col('config').doc('last_sync'), { ts });
+        await batch.commit();
+        if (typeof localLastSyncTs !== 'undefined') localLastSyncTs = Date.now();
+      } catch (e) {
+        this.online = false;
+        throw e;
+      }
     }
   }
 
@@ -3452,7 +3456,7 @@ document.addEventListener('input', e => {
 
 // Auto-save com debounce
 let autoSaveTimer = null;
-const AUTO_SAVE_DELAY = 3000; // 3 segundos após parar de digitar
+const AUTO_SAVE_DELAY = 30000; // 30 segundos após parar de digitar
 
 function setDirty(v){
   dirty=v;
@@ -3652,7 +3656,7 @@ async function saveLesson(silent=false){
     }
     
     data[currentKey] = lessonData;
-    await saveAll();
+    await planosDB.savePlano(currentKey, lessonData);
     setDirty(false);
     refreshSidebarItem(currentKey);
     
@@ -3663,14 +3667,14 @@ async function saveLesson(silent=false){
       console.log('✅ Auto-save concluído para aula:', currentKey);
     }
   } catch(e) {
-    console.error('Erro ao salvar aula:', e);
-    if(!silent) toast('Erro ao salvar aula');
-    // Em caso de erro, voltar o status para "não salvo"
+    console.error('Erro ao sincronizar aula com Firebase:', e);
+    // localStorage já foi gravado — dados seguros; apenas a sincronização remota falhou
+    setDirty(false);
+    refreshSidebarItem(currentKey);
+    toast('Salvo localmente. Falha ao sincronizar com o servidor.', 5000);
     const statusEl = document.getElementById('saveStatus');
-    if (statusEl) {
-      statusEl.textContent = 'Erro ao salvar';
-      statusEl.className = 'save-status';
-    }
+    if (statusEl) { statusEl.textContent = 'Salvo localmente'; statusEl.className = 'save-status'; }
+    updateConnectionStatus(false, 'Offline');
   }
 }
 
@@ -3872,7 +3876,7 @@ async function saveDisciplina(silent=false){
     }
     
     disciplinas[currentCourse.id] = disciplinaData;
-    await saveDisciplinas();
+    await planosDB.saveDisciplina(currentCourse.id, disciplinaData);
     setDirty(false);
     refreshDisciplinaItem(currentCourse.id);
     
@@ -3883,14 +3887,14 @@ async function saveDisciplina(silent=false){
       console.log('✅ Auto-save concluído para disciplina:', currentCourse.id);
     }
   } catch(e) {
-    console.error('Erro ao salvar disciplina:', e);
-    if(!silent) toast('Erro ao salvar disciplina');
-    // Em caso de erro, voltar o status para "não salvo"
+    console.error('Erro ao sincronizar disciplina com Firebase:', e);
+    // localStorage já foi gravado — dados seguros; apenas a sincronização remota falhou
+    setDirty(false);
+    refreshDisciplinaItem(currentCourse.id);
+    toast('Salvo localmente. Falha ao sincronizar com o servidor.', 5000);
     const statusEl = document.getElementById('saveStatusDisc');
-    if (statusEl) {
-      statusEl.textContent = 'Erro ao salvar';
-      statusEl.className = 'save-status';
-    }
+    if (statusEl) { statusEl.textContent = 'Salvo localmente'; statusEl.className = 'save-status'; }
+    updateConnectionStatus(false, 'Offline');
   }
 }
 
@@ -5025,98 +5029,61 @@ function updateConnectionStatus(online, text) {
 
 // Monitoramento da conexão Firebase
 let firebaseMonitorInterval = null;
-let lastFirebaseCheck = Date.now();
-let updateCheckCounter = 0;
 
 function startFirebaseMonitoring() {
-  // Atualizar status inicial
   updateConnectionStatus(planosDB.online, planosDB.online ? 'Online' : 'Offline');
-  
-  // Verificar conexão a cada 30 segundos
+
+  // Detecção passiva via eventos do browser — zero requisições
+  window.addEventListener('online', () => {
+    planosDB.init().then(() => {
+      updateConnectionStatus(planosDB.online, planosDB.online ? 'Online' : 'Offline');
+      if (planosDB.online) toast('Conexão restaurada!', 2000);
+    }).catch(() => updateConnectionStatus(false, 'Offline'));
+  });
+  window.addEventListener('offline', () => {
+    planosDB.online = false;
+    updateConnectionStatus(false, 'Offline');
+  });
+
+  // Recheck leve a cada 10 minutos (apenas quando offline)
   firebaseMonitorInterval = setInterval(async () => {
-    updateCheckCounter++;
-    
-    try {
-      if (planosDB.online) {
-        // Tentar uma operação simples para verificar se ainda está conectado
-        await planosDB._col('config').doc('ping').get();
-        lastFirebaseCheck = Date.now();
-        updateConnectionStatus(true, 'Online');
-        
-        // A cada 4 verificações (2 minutos), verificar se há atualizações
-        if (updateCheckCounter % 4 === 0) {
-          await checkForUpdates();
-        }
-      }
-    } catch (error) {
-      // Firebase offline é normal - não é um erro crítico
-      console.log('📡 Firebase offline - usando armazenamento local');
-      planosDB.online = false;
-      updateConnectionStatus(false, 'Offline');
-      
-      // Notificar apenas se houve atividade recente (para evitar spam)
-      if (Date.now() - lastFirebaseCheck < 60000) {
-        toast('Aviso: Modo offline ativo. Dados salvos localmente.', 3000);
-      }
-      
-      // Tentar reconectar
-      setTimeout(() => {
-        updateConnectionStatus(false, 'Reconectando...');
-        planosDB.init().then(() => {
-          if (planosDB.online) {
-            console.log('✅ Reconectado ao Firebase');
-            updateConnectionStatus(true, 'Online');
-            toast('Conexão com Firebase restaurada!', 2000);
-          } else {
-            updateConnectionStatus(false, 'Offline');
-          }
-        }).catch(() => {
-          console.log('❌ Falha na reconexão Firebase');
-          updateConnectionStatus(false, 'Offline');
-        });
-      }, 5000);
+    if (!planosDB.online && navigator.onLine) {
+      try {
+        await planosDB.init();
+        updateConnectionStatus(planosDB.online, planosDB.online ? 'Online' : 'Offline');
+      } catch {}
     }
-  }, 30000); // 30 segundos
+  }, 600000); // 10 minutos
+
+  // Verificar atualizações remotas 1x/hora — custa apenas 1 leitura
+  setInterval(() => checkForUpdates(), 3600000);
 }
 
-// Verificar se há atualizações no Firebase
+// Verificar atualizações via timestamp único — 1 leitura em vez de N documentos
+let localLastSyncTs = Date.now();
+
 async function checkForUpdates() {
   try {
     if (!planosDB.online) return;
-    
-    const remotoPlanos = await planosDB.loadAllPlanos();
-    const remotoDisciplinas = await planosDB.loadAllDisciplinas();
-    
-    const dadosMudaram = JSON.stringify(data) !== JSON.stringify(remotoPlanos) || 
-                        JSON.stringify(disciplinas) !== JSON.stringify(remotoDisciplinas);
-    
-    if (dadosMudaram && !dirty) {
-      // Há atualizações no Firebase e não há alterações locais não salvas
-      console.log('🔄 Atualizações detectadas no Firebase');
-      
-      // Mostrar notificação discreta para o usuário
-      const notification = document.createElement('div');
-      notification.innerHTML = `
-        <div style="position:fixed;top:70px;right:20px;background:var(--navy);color:white;padding:12px 16px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:1000;font-size:13px;max-width:300px">
-          📥 Há atualizações disponíveis
-          <div style="margin-top:8px">
-            <button onclick="this.parentElement.parentElement.remove();forceSyncData()" style="background:var(--gold);border:none;color:var(--navy);padding:4px 12px;border-radius:4px;cursor:pointer;margin-right:8px;font-size:12px">Atualizar</button>
-            <button onclick="this.parentElement.parentElement.remove()" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px">Ignorar</button>
-          </div>
+    const doc = await planosDB._col('config').doc('last_sync').get();
+    if (!doc.exists) return;
+    const remoteTs = doc.data().ts?.toMillis?.() || 0;
+    if (remoteTs <= localLastSyncTs || dirty) return;
+
+    console.log('🔄 Atualização remota detectada');
+    const notification = document.createElement('div');
+    notification.innerHTML = `
+      <div style="position:fixed;top:70px;right:20px;background:var(--navy);color:white;padding:12px 16px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.3);z-index:1000;font-size:13px;max-width:300px">
+        📥 Há atualizações disponíveis
+        <div style="margin-top:8px">
+          <button onclick="this.parentElement.parentElement.remove();forceSyncData()" style="background:var(--gold);border:none;color:var(--navy);padding:4px 12px;border-radius:4px;cursor:pointer;margin-right:8px;font-size:12px">Atualizar</button>
+          <button onclick="this.parentElement.parentElement.remove()" style="background:transparent;border:1px solid rgba(255,255,255,0.3);color:white;padding:4px 12px;border-radius:4px;cursor:pointer;font-size:12px">Ignorar</button>
         </div>
-      `;
-      document.body.appendChild(notification);
-      
-      // Auto-remover após 10 segundos
-      setTimeout(() => {
-        if (notification.parentNode) {
-          notification.remove();
-        }
-      }, 10000);
-    }
-  } catch (error) {
-    // Ignorar erros silenciosamente para não spam o console
-  }
+      </div>
+    `;
+    document.body.appendChild(notification);
+    setTimeout(() => { if (notification.parentNode) notification.remove(); }, 10000);
+  } catch {}
 }
 
 // Função para adicionar botão de importar backup
@@ -5277,25 +5244,8 @@ function initStickyToolbar() {
   // Usar scroll event para detectar quando a barra deve ficar sticky
   window.addEventListener('scroll', updateStickyState);
   
-  // Observer para detectar mudanças no DOM (quando TinyMCE é carregado)
-  const observer = new MutationObserver(() => {
-    forceTinyMCEStickyToolbars();
-  });
-  
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-  
-  // Executar periodicamente para garantir que toolbars permaneçam fixas
-  setInterval(forceTinyMCEStickyToolbars, 2000);
-  
-  // Também verificar quando a página carrega
+  // Aplicar sticky uma única vez ao carregar
   updateStickyState();
-  
-  // Forçar toolbars sticky imediatamente
-  setTimeout(forceTinyMCEStickyToolbars, 1000);
-  setTimeout(forceTinyMCEStickyToolbars, 3000);
 }
 
 // Inicializar quando a página carregar
