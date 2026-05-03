@@ -2840,6 +2840,16 @@ function applyLockState(locked) {
 
 function key(courseId, num){ return `${courseId}_${num}`; }
 
+async function openLessonToPendencias(e, courseId, num){
+  e.stopPropagation();
+  await selectLesson(courseId, num);
+  const field = document.getElementById('f_pendencias');
+  if(field){
+    field.scrollIntoView({behavior:'smooth', block:'center'});
+    field.focus();
+  }
+}
+
 // ══════════════════════════════════════════════════════
 // INTERFACE DE NAVEGAÇÃO - Funções principais para carregamento de cursos e aulas
 // ══════════════════════════════════════════════════════
@@ -3497,7 +3507,7 @@ function buildSidebar(){
             <div class="lesson-status ${status}"></div>
             <div class="lesson-label">Aula ${String(n).padStart(2,'0')} de ${String(course.total).padStart(2,'0')}${tema?` <span class="lesson-tema">· ${tema}</span>`:''}
             </div>
-            ${hasPending?'<span class="lesson-pending-badge" title="Pendência registrada">Pend.</span>':''}
+            ${hasPending?`<span class="lesson-pending-badge" title="Pendência registrada" onclick="openLessonToPendencias(event,'${course.id}',${n})">Pend.</span>`:''}
             ${reviewed?'<span class="lesson-reviewed-badge">✓</span>':''}
           </div>`;
         }).join('')}
@@ -3805,7 +3815,7 @@ function refreshSidebarItem(k){
   if(item){
     let pbadge=item.querySelector('.lesson-pending-badge');
     if(data[k]?.pendencias?.trim()){
-      if(!pbadge){ pbadge=document.createElement('span'); pbadge.className='lesson-pending-badge'; pbadge.textContent='Pend.'; pbadge.title='Pendência registrada'; const rb=item.querySelector('.lesson-reviewed-badge'); rb?item.insertBefore(pbadge,rb):item.appendChild(pbadge); }
+      if(!pbadge){ pbadge=document.createElement('span'); pbadge.className='lesson-pending-badge'; pbadge.textContent='Pend.'; pbadge.title='Pendência registrada'; const [cId,cNum]=k.split('_'); pbadge.onclick=(e)=>openLessonToPendencias(e,cId,cNum); const rb=item.querySelector('.lesson-reviewed-badge'); rb?item.insertBefore(pbadge,rb):item.appendChild(pbadge); }
     } else {
       if(pbadge) pbadge.remove();
     }
