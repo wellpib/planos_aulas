@@ -3805,7 +3805,7 @@ function refreshSidebarItem(k){
   if(item){
     let pbadge=item.querySelector('.lesson-pending-badge');
     if(data[k]?.pendencias?.trim()){
-      if(!pbadge){ pbadge=document.createElement('span'); pbadge.className='lesson-pending-badge'; pbadge.textContent='Pend.'; pbadge.title='Pendência registrada'; item.appendChild(pbadge); }
+      if(!pbadge){ pbadge=document.createElement('span'); pbadge.className='lesson-pending-badge'; pbadge.textContent='Pend.'; pbadge.title='Pendência registrada'; const rb=item.querySelector('.lesson-reviewed-badge'); rb?item.insertBefore(pbadge,rb):item.appendChild(pbadge); }
     } else {
       if(pbadge) pbadge.remove();
     }
