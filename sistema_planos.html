@@ -1286,6 +1286,7 @@ html,body{height:100%;overflow:hidden;font-family:'IBM Plex Sans',sans-serif;fon
 .lesson-label{font-size:11.5px;color:rgba(255,255,255,.6);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lesson-item.active .lesson-label{color:var(--gold2);font-weight:500}
 .lesson-reviewed-badge{font-size:10px;font-weight:700;color:var(--green);flex-shrink:0;line-height:1}
+.lesson-pending-badge{font-size:10px;font-weight:700;color:#e53e3e;flex-shrink:0;line-height:1;margin-left:2px}
 .lesson-tema{color:rgba(255,255,255,.38);font-weight:400;font-size:10px}
 .lesson-item.active .lesson-tema{color:rgba(200,168,75,.65)}
 .btn-revisado{background:transparent;color:var(--text3);border-color:var(--border2)}
@@ -2010,6 +2011,13 @@ div[data-alloy-vertical-dir="toptobottom"] {
         <div class="field-group full">
           <label>Avaliação da Aula</label>
           <textarea id="f_avaliacaoAula" class="tall" placeholder="Formulário de avaliação pós-aula:\n\nObjetivos foram atingidos? (   ) sim   (   ) não\nJustificativas: ________________________________________________\n\nOs recursos materiais foram suficientes e adequados? (   ) sim   (   ) não\nJustificativas: ________________________________________________\n\nOcorrências disciplinares? (   ) sim   (   ) não\nJustificativas: ________________________________________________\n\nObservações gerais:\n_____________________________________________________"></textarea>
+        </div>
+
+        <div class="section-divider"><span>Pendências</span></div>
+
+        <div class="field-group full">
+          <label>Pendências</label>
+          <textarea id="f_pendencias" placeholder="Registre aqui pendências a resolver antes ou após a aula..."></textarea>
         </div>
 
       </div>
@@ -2967,7 +2975,8 @@ function openLesson(courseId, lessonIndex) {
   document.getElementById('f_conteudos').value = data?.conteudos || '';
   document.getElementById('f_recursos').value = data?.recursos || '';
   document.getElementById('f_avaliacaoAula').value = data?.avaliacaoAula || '';
-  
+  document.getElementById('f_pendencias').value = data?.pendencias || '';
+
   // Carregar campo estratégias
   buildEstrategiasBlocks(data?.estrategias || '');
   
@@ -3039,7 +3048,8 @@ function collectLesson() {
     conteudos: document.getElementById('f_conteudos')?.value || '',
     estrategias: document.getElementById('f_estrategias')?.value || '',
     recursos: document.getElementById('f_recursos')?.value || '',
-    avaliacaoAula: document.getElementById('f_avaliacaoAula')?.value || ''
+    avaliacaoAula: document.getElementById('f_avaliacaoAula')?.value || '',
+    pendencias: document.getElementById('f_pendencias')?.value || ''
   };
 }
 
@@ -3482,10 +3492,12 @@ function buildSidebar(){
           const status=c===3?'done':c>0?'partial':'';
           const reviewed=data[k2]?.revisado||false;
           const tema=data[k2]?.tema||'';
+          const hasPending=!!(data[k2]?.pendencias?.trim());
           return `<div class="lesson-item" id="li_${k2}" onclick="selectLesson('${course.id}',${n})">
             <div class="lesson-status ${status}"></div>
             <div class="lesson-label">Aula ${String(n).padStart(2,'0')} de ${String(course.total).padStart(2,'0')}${tema?` <span class="lesson-tema">· ${tema}</span>`:''}
             </div>
+            ${hasPending?'<span class="lesson-pending-badge" title="Pendência registrada">Pend.</span>':''}
             ${reviewed?'<span class="lesson-reviewed-badge">✓</span>':''}
           </div>`;
         }).join('')}
@@ -3551,6 +3563,7 @@ async function selectLesson(courseId, num){
   
   document.getElementById('f_recursos').value=d.recursos||'';
   document.getElementById('f_avaliacaoAula').value=d.avaliacaoAula||'';
+  document.getElementById('f_pendencias').value=d.pendencias||'';
   currentRevisado = d.revisado || false;
   updateRevisadoBtn(currentRevisado);
   const badge = document.getElementById('aulaBadge');
@@ -3607,7 +3620,7 @@ function setDirty(v){
 }
 
 // Watch all fields
-['f_ano','f_avaliacao','f_duracao','f_tema','f_objetivos','f_conteudos','f_recursos','f_avaliacaoAula']
+['f_ano','f_avaliacao','f_duracao','f_tema','f_objetivos','f_conteudos','f_recursos','f_avaliacaoAula','f_pendencias']
   .forEach(id=>{
     const field = document.getElementById(id);
     if(field) {
@@ -3635,6 +3648,7 @@ function collectLesson(){
     estrategias: getTinyMCEContent(),
     recursos:document.getElementById('f_recursos').value,
     avaliacaoAula:document.getElementById('f_avaliacaoAula').value,
+    pendencias:document.getElementById('f_pendencias').value,
     revisado: currentRevisado,
   };
 }
@@ -3785,6 +3799,15 @@ function refreshSidebarItem(k){
       const num=parts[1];
       const tema=data[k]?.tema||'';
       label.innerHTML=`Aula ${String(num).padStart(2,'0')} de ${String(course?.total||'??').padStart(2,'0')}${tema?` <span class="lesson-tema">· ${tema}</span>`:''}`;
+    }
+  }
+  // Update pending badge
+  if(item){
+    let pbadge=item.querySelector('.lesson-pending-badge');
+    if(data[k]?.pendencias?.trim()){
+      if(!pbadge){ pbadge=document.createElement('span'); pbadge.className='lesson-pending-badge'; pbadge.textContent='Pend.'; pbadge.title='Pendência registrada'; item.appendChild(pbadge); }
+    } else {
+      if(pbadge) pbadge.remove();
     }
   }
   // Update reviewed badge
@@ -4343,8 +4366,14 @@ AVALIAÇÃO DA AULA
 ${'='.repeat(60)}
 
 ${d.avaliacaoAula || 'Não preenchido'}
+
+${'='.repeat(60)}
+PENDÊNCIAS
+${'='.repeat(60)}
+
+${d.pendencias || 'Não preenchido'}
 `;
-  
+
   // Criar blob e fazer download
   const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
   const url = window.URL.createObjectURL(blob);
@@ -4451,7 +4480,9 @@ async function generateDoc(){
     { type: 'gap' },
     { type: 'section', label: 'RECURSOS MATERIAIS E DIDÁTICOS', text: d.recursos },
     { type: 'gap' },
-    { type: 'section', label: 'AVALIAÇÃO DA AULA', text: d.avaliacaoAula }
+    { type: 'section', label: 'AVALIAÇÃO DA AULA', text: d.avaliacaoAula },
+    { type: 'gap' },
+    { type: 'section', label: 'PENDÊNCIAS', text: d.pendencias }
   ];
   
   const filename = `Plano_de_Aula_${currentCourse.id}_${String(num).padStart(2,'0')}.docx`;
